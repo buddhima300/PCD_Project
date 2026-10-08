@@ -22,7 +22,10 @@ export const platformSeeds: PlatformSeed[] = [
 { code: 'KANE-7', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 6, WD: 5, SAFETY: 2 }, updatedAt: '2026-08-19' },
 { code: 'KANE-13', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 5, WD: 5 }, updatedAt: '2026-09-08' },
 { code: 'KANE-14', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 3, WD: 3 }, updatedAt: '2026-05-30' },
+{ code: 'KANE-15', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 5, WD: 4 }, updatedAt: '2026-09-12' },
 { code: 'KANE-20', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 2, DP: 6, WD: 6, SAFETY: 1 }, updatedAt: '2026-09-15' },
+{ code: 'KANE-21', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 5, WD: 4 }, updatedAt: '2026-09-01' },
+{ code: 'KANE-24', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 5, WD: 4 }, updatedAt: '2026-09-05' },
 { code: 'KANE-25', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 2, WD: 2 }, updatedAt: '2026-04-22' },
 { code: 'KANE-30', categoryCode: 'KANE', status: 'ACTIVE', departments: { GS: 1, DP: 4, WD: 3 }, updatedAt: '2026-08-01' },
 { code: 'JAX-1', categoryCode: 'JAX', status: 'ACTIVE', departments: { GS: 1, DP: 3, WD: 2 }, updatedAt: '2026-03-14' },
@@ -63,8 +66,7 @@ export const shiftDefinitions: ShiftDefinition[] = [
 
 
 export const demoUsers: SessionUser[] = [
-{ id: 'USR-ADM-001', role: 'ADMIN', name: 'Leila Haddad', title: 'System Administrator', email: 'leila.haddad@relayops.com' },
-{ id: 'USR-MGR-014', role: 'MANAGER', name: 'Daniel Mwangi', title: 'Shift Manager', email: 'daniel.mwangi@relayops.com' },
+{ id: 'USR-SUP-001', role: 'SUPERVISOR', name: 'Leila Haddad', title: 'Supervisor', email: 'leila.haddad@relayops.com' },
 { id: 'EMP-00421', role: 'EMPLOYEE', name: 'Arjun Mehta', title: 'Deposit Agent', email: 'arjun.mehta@relayops.com' },
 { id: 'FL-00124', role: 'FREELANCER', name: 'Sofia Reyes', title: 'Freelancer · Deposits', email: 'sofia.reyes@relayops.com' }];
 

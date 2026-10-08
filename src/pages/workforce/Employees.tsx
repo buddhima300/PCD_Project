@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpIcon, UserPlusIcon } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Field';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -52,7 +53,7 @@ export function Employees() {
 
   return (
     <div>
-      <PageHeader title="Employee directory" description="Server-side search, filtering, sorting and pagination. Rows are virtualised for large result sets." />
+      <PageHeader title="Employee directory" description="Server-side search, filtering, sorting and pagination. Rows are virtualised for large result sets." actions={<Link to="/register"><Button icon={<UserPlusIcon className="h-4 w-4" />}>Register staff</Button></Link>} />
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={update(setSearch)} placeholder="Search ID, name, email" className="w-64" />

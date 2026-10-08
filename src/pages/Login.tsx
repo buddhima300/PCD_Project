@@ -19,10 +19,9 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-const roleIcons: Record<Role, typeof UsersIcon> = { ADMIN: ShieldCheckIcon, MANAGER: UsersIcon, EMPLOYEE: BriefcaseIcon, FREELANCER: UserRoundCogIcon };
+const roleIcons: Record<Role, typeof UsersIcon> = { SUPERVISOR: ShieldCheckIcon, EMPLOYEE: BriefcaseIcon, FREELANCER: UserRoundCogIcon };
 const roleHints: Record<Role, string> = {
-  ADMIN: 'Full configuration, audit and settings',
-  MANAGER: 'Operations, replacements, off-day review',
+  SUPERVISOR: 'Full operations, scheduling, configuration & audit',
   EMPLOYEE: 'KANE-13 · DP · Night shift',
   FREELANCER: 'DP freelancer · Priority 1'
 };

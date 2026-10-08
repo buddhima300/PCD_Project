@@ -13,7 +13,7 @@ export const toneClass: Record<Tone, string> = {
 };
 const map: Record<string, {
   tone: Tone;
-  icon: BoxIcon;
+  icon: typeof BoxIcon;
   label?: string;
 }> = {
   ACTIVE: {

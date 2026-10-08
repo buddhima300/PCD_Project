@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeftRightIcon, ArrowRightIcon, CalendarOffIcon, GaugeIcon, MoonIcon, RefreshCwIcon, RepeatIcon, ShieldAlertIcon, SunIcon } from
+  ArrowLeftRightIcon, ArrowRightIcon, CalendarOffIcon, GaugeIcon, GraduationCapIcon, MoonIcon, RefreshCwIcon, RepeatIcon,
+  ServerIcon, ShieldAlertIcon, SparklesIcon, SunIcon, UserCheckIcon, UsersIcon } from
 'lucide-react';
 import { PlatformCard } from '../../components/platform/PlatformCard';
 import { Button } from '../../components/ui/Button';
@@ -13,6 +14,7 @@ import { ScopeFilters, type Scope } from '../../components/ui/ScopeFilters';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
+import { PlacementWizardDialog } from '../../components/placement/PlacementWizardDialog';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { api } from '../../services/api';
 import { fmtDate, fmtShiftWindow, relative } from '../../utils/format';
@@ -22,13 +24,18 @@ const severityRank = { INCIDENT: 0, WARNING: 1, FULL: 2, OPERATIONAL: 3, INACTIV
 export function OpsDashboard() {
   const user = useSessionStore((s) => s.user)!;
   const [scope, setScope] = useState<Scope>({ category: '', platform: '', dept: '', shift: '' });
+  const [placementWorker, setPlacementWorker] = useState<any | null>(null);
+
   const q = useQuery({ queryKey: ['dashboard', scope], queryFn: () => api.getDashboard(scope) });
   const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}) });
+  const demandsQuery = useQuery({ queryKey: ['platform-demands'], queryFn: () => api.listPlatformDemands() });
+  const queueQuery = useQuery({ queryKey: ['placement-queue'], queryFn: () => api.listPlacementQueue() });
+  const trainingsQuery = useQuery({ queryKey: ['trainings'], queryFn: () => api.listTrainings() });
 
   return (
     <div>
       <PageHeader
-        title={user.role === 'ADMIN' ? 'Admin dashboard' : 'Operations dashboard'}
+        title="Supervisor dashboard"
         description="Live platform staffing, workstation occupancy and exceptions across every category."
         actions={<ScopeFilters value={scope} onChange={setScope} />} />
       
@@ -47,7 +54,7 @@ export function OpsDashboard() {
       (() => {
         const d = q.data;
         const k = d.kpis;
-        const platforms = [...d.platforms].sort((a, b) => severityRank[a.opStatus] - severityRank[b.opStatus]);
+        const platforms = [...d.platforms].sort((a, b) => severityRank[a.opStatus as keyof typeof severityRank] - severityRank[b.opStatus as keyof typeof severityRank]);
         const exceptions = [
         ...d.urgentReplacements.filter((r) => r.status === 'FAILED' || r.status === 'SEARCHING' || r.status === 'PENDING').map((r) => ({
           key: r.id,
@@ -64,7 +71,7 @@ export function OpsDashboard() {
           detail: i.title
         }))].
         slice(0, 6);
-        const hoTotal = Object.values(d.handoverByStatus).reduce((s, n) => s + n, 0);
+        const hoTotal = (Object.values(d.handoverByStatus) as number[]).reduce((s, n) => s + n, 0);
         return (
           <div className="space-y-4">
               <div className="grid gap-4 xl:grid-cols-12">
@@ -188,6 +195,95 @@ export function OpsDashboard() {
                 <KpiTile label="Laptop incidents" value={k.laptopIncidents} sub="open or in progress" icon={ShieldAlertIcon} tone="danger" emphasis to="/incidents" />
                 <KpiTile label="Pending handovers" value={k.pendingHandovers} sub="Morning → Night 19:30" icon={ArrowLeftRightIcon} tone="warning" emphasis to="/pools" />
                 <KpiTile label="Off-day capacity conflicts" value={k.offDayConflicts} sub="full groups next 7 days" icon={CalendarOffIcon} tone="violet" emphasis to="/off-days" />
+              </div>
+
+              {/* Critical Staffing Gaps & Direct Platform Placement */}
+              <div className="grid gap-4 xl:grid-cols-12">
+                <Card className="xl:col-span-4">
+                  <CardHeader
+                    title="Critical platform vacancies"
+                    description="Genuine vacancies awaiting recruit placement"
+                    action={<Link to="/platform-demand" className="text-xs font-medium text-primary hover:underline">View demand</Link>}
+                  />
+                  <div className="p-4 space-y-2.5">
+                    {(demandsQuery.data ?? []).filter(dm => dm.vacancy > 0).slice(0, 3).map(dm => (
+                      <div key={`${dm.platformCode}-${dm.dept}`} className="flex items-center justify-between rounded-xl border border-line bg-mist/30 p-2.5 text-xs">
+                        <div>
+                          <div className="flex items-center gap-1.5 font-semibold text-ink">
+                            <span className="font-bold text-primary-700">{dm.platformCode}</span>
+                            <DeptTag dept={dm.dept} />
+                          </div>
+                          <p className="mt-1 text-ink-muted">
+                            Staffing: <strong>{dm.activeHeadcount} / {dm.targetHeadcount}</strong> · {dm.vacancy} {dm.vacancy === 1 ? 'vacancy' : 'vacancies'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {dm.resourceStatus === 'READY' ? (
+                            <span className="inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                              Workstation Ready
+                            </span>
+                          ) : (
+                            <span className="inline-block rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-800">
+                              Resource Blocked
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="xl:col-span-4">
+                  <CardHeader
+                    title="New recruits awaiting placement"
+                    description="Match directly into platform vacancies"
+                    action={<Link to="/placement-queue" className="text-xs font-medium text-primary hover:underline">Queue ({(queueQuery.data ?? []).length})</Link>}
+                  />
+                  <div className="p-4 space-y-2.5">
+                    {(queueQuery.data ?? []).filter(q => q.lifecycle === 'SELECTED' || q.lifecycle === 'ONBOARDING').slice(0, 2).map(rec => (
+                      <div key={rec.workerId} className="flex items-center justify-between rounded-xl border border-line bg-mist/30 p-2.5 text-xs">
+                        <div>
+                          <p className="font-semibold text-ink">{rec.workerName}</p>
+                          <div className="mt-1 flex items-center gap-1 text-ink-muted">
+                            <DeptTag dept={rec.dept} />
+                            <span>Recommended: <strong>{rec.recommendedPlatform}</strong></span>
+                          </div>
+                        </div>
+                        <Button
+                          size="xs"
+                          onClick={() => setPlacementWorker(rec)}
+                          icon={<SparklesIcon className="h-3 w-3 text-amber-500" />}
+                        >
+                          Place Worker
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card className="xl:col-span-4">
+                  <CardHeader
+                    title="Current on-platform training"
+                    description="5-day direct production training"
+                    action={<Link to="/training" className="text-xs font-medium text-primary hover:underline">All ({(trainingsQuery.data ?? []).length})</Link>}
+                  />
+                  <div className="p-4 space-y-2.5">
+                    {(trainingsQuery.data ?? []).filter(t => t.trainingStatus === 'IN_TRAINING' || t.trainingStatus === 'TRAINING_EXTENDED').slice(0, 3).map(trn => (
+                      <div key={trn.id} className="flex items-center justify-between rounded-xl border border-line bg-mist/30 p-2.5 text-xs">
+                        <div>
+                          <p className="font-semibold text-ink">{trn.workerName}</p>
+                          <p className="text-ink-muted text-[11px]">
+                            {trn.platformCode} · {trn.positionCode} ({trn.dept})
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-primary-700">Day {trn.completedTrainingDays} / {trn.requiredTrainingDays}</span>
+                          <span className="block text-[10px] text-ink-subtle">{trn.trainingStatus === 'TRAINING_EXTENDED' ? 'Extended' : 'In Training'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
               </div>
 
               <Card>
@@ -335,6 +431,26 @@ export function OpsDashboard() {
 
       })()
       }
+
+      <PlacementWizardDialog
+        open={!!placementWorker}
+        onClose={() => setPlacementWorker(null)}
+        worker={
+          placementWorker
+            ? {
+                id: placementWorker.workerId,
+                name: placementWorker.workerName,
+                dept: placementWorker.dept,
+                employmentType: placementWorker.employmentType
+              }
+            : null
+        }
+        onSuccess={() => {
+          demandsQuery.refetch();
+          queueQuery.refetch();
+          trainingsQuery.refetch();
+        }}
+      />
     </div>);
 
 }

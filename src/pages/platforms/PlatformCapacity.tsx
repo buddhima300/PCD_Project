@@ -28,7 +28,15 @@ export function PlatformCapacity() {
 
   return (
     <div>
-      <PageHeader title="Platform capacity" description="Workstation capacity per department is configured per platform. Cells show occupied / capacity; a dash means the department does not operate there." />
+      <PageHeader
+        title="Platform capacity"
+        description="Workstation capacity per department is configured per platform. Cells show occupied / capacity; a dash means the department does not operate there."
+        actions={
+          <Link to="/platform-demand">
+            <Button size="sm">Workforce Demand & Vacancies</Button>
+          </Link>
+        }
+      />
       <Card>
         <div className="flex flex-col gap-3 border-b border-line p-3 md:flex-row md:items-center md:justify-between">
           <ScopeFilters value={scope} onChange={setScope} show={['category']} />

@@ -108,7 +108,11 @@ export function summarizePlatform(p: Platform, counts = groupCountMap()): Platfo
 
 export function toEmployee(e: EmployeeRecord): Employee {
   const { slot: _slot, ...rest } = e;
-  return rest;
+  return {
+    ...rest,
+    lifecycle: e.lifecycle ?? 'PRODUCTION_ACTIVE',
+    qualifiedForProduction: e.qualifiedForProduction ?? true
+  };
 }
 
 export function toFreelancer(f: FreelancerRecord): Freelancer {
@@ -121,6 +125,9 @@ export function toFreelancer(f: FreelancerRecord): Freelancer {
   const today = db.availability[f.id]?.[TODAY];
   return {
     ...f,
+    employmentType: f.employmentType ?? 'EXTERNAL',
+    lifecycle: (f.lifecycle as any) ?? 'PRODUCTION_ACTIVE',
+    qualifiedForProduction: f.qualifiedForProduction ?? true,
     currentAssignmentId: current?.id ?? null,
     currentPlatform: current?.platformCode ?? null,
     workloadUsed: workload,

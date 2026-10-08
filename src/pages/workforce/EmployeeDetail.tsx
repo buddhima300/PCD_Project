@@ -35,6 +35,8 @@ export function EmployeeDetail() {
           <h2 className="text-sm font-semibold">Operational assignment</h2>
           <dl className="mt-3 space-y-3 text-sm">
             <div className="flex justify-between"><dt className="text-ink-muted">Platform</dt><dd><Link to={`/platforms/${e.platformCode}`} className="font-semibold hover:text-primary">{e.platformCode}</Link></dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Workforce position</dt><dd className="font-mono font-bold text-ink">{e.positionCode ?? `${e.dept}-0${(Number(e.id.slice(-2)) % 5) + 1}`}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Lifecycle</dt><dd><StatusBadge status={e.lifecycle ?? 'PRODUCTION_ACTIVE'} size="xs" /></dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">Department</dt><dd className="flex items-center gap-1.5"><DeptTag dept={e.dept} />{deptNames[e.dept]} <LockIcon className="h-3 w-3 text-ink-subtle" aria-label="Not editable" /></dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">Current shift</dt><dd><ShiftTag shift={e.shift} /></dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">From Oct 01</dt><dd><ShiftTag shift={e.nextShift} /></dd></div>

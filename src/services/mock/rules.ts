@@ -14,6 +14,13 @@ export interface FreelancerRecord {
   accountStatus: 'ACTIVE' | 'LOCKED' | 'INVITED';
   compatibleCategories: string[];
   joinedAt: string;
+  employmentType?: 'PERMANENT' | 'PART_TIME' | 'EXTERNAL';
+  lifecycle?: string;
+  qualifiedForProduction?: boolean;
+  compatiblePlatforms?: string[];
+  currentAssignmentId?: string | null;
+  currentPlatform?: string | null;
+  positionCode?: string;
 }
 
 export type AvailabilityMap = Record<string, Record<string, Record<ShiftCode, AvailabilityState>>>;
@@ -78,7 +85,7 @@ replacements: Replacement[])
       freelancerId: f.id,
       name: f.name,
       priority: f.priority,
-      eligible: checks.every((c) => c.passed),
+      eligible: checks.every((c) => c.passed) && f.qualifiedForProduction !== false && f.lifecycle !== 'IN_PLATFORM_TRAINING',
       selected: false,
       availability: av,
       workloadUsed: inWindow,

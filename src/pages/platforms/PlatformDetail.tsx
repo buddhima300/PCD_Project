@@ -34,6 +34,8 @@ export function PlatformDetail() {
   const laps = useQuery({ queryKey: ['laptops', { platform: code, pageSize: 200 }], queryFn: () => api.listLaptops({ platform: code, pageSize: 200 }), enabled: tab === 'workstations' });
   const incs = useQuery({ queryKey: ['incidents', { platform: code }], queryFn: () => api.listIncidents({ platform: code }), enabled: tab === 'incidents' });
   const audit = useQuery({ queryKey: ['config-history', code], queryFn: () => api.getConfigHistory(code), enabled: tab === 'audit' });
+  const positions = useQuery({ queryKey: ['platform-positions', code], queryFn: () => api.getPlatformPositions(code) });
+  const trainings = useQuery({ queryKey: ['trainings', { platform: code }], queryFn: () => api.listTrainings({ platform: code }) });
 
   if (q.isPending) return <LoadingBlock rows={8} />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
@@ -42,11 +44,11 @@ export function PlatformDetail() {
   return (
     <div>
       <PageHeader
-        breadcrumbs={[{ label: 'Platforms', to: '/platforms' }, { label: p.categoryCode, to: role === 'ADMIN' ? `/categories/${p.categoryCode}` : undefined }, { label: p.code }]}
+        breadcrumbs={[{ label: 'Platforms', to: '/platforms' }, { label: p.categoryCode, to: role === 'SUPERVISOR' ? `/categories/${p.categoryCode}` : undefined }, { label: p.code }]}
         title={p.code}
         meta={<><StatusBadge status={p.status} /><StatusBadge status={p.opStatus} /></>}
         description={`${p.id} · Category ${p.categoryCode} · ${p.occupancy.map((o) => `${o.dept} ${o.capacity}`).join(' · ')} · Total ${p.totalWorkstations} workstations`}
-        actions={role === 'ADMIN' && <Link to={`/platform-config/${p.code}`}><Button variant="secondary" size="sm" icon={<SlidersHorizontalIcon className="h-3.5 w-3.5" />}>Configure</Button></Link>} />
+        actions={role === 'SUPERVISOR' && <Link to={`/platform-config/${p.code}`}><Button variant="secondary" size="sm" icon={<SlidersHorizontalIcon className="h-3.5 w-3.5" />}>Configure</Button></Link>} />
       
       <Tabs
         className="mb-4"
@@ -90,6 +92,51 @@ export function PlatformDetail() {
               <span>Total <b className="tabular">{p.currentWorkforce} / {p.totalWorkstations}</b> occupied</span>
               <span className="flex items-center gap-1"><SunIcon className="h-4 w-4 text-warning-600" /> Morning <b className="tabular">{p.morningWorkforce} / {p.totalWorkstations}</b></span>
               <span className="flex items-center gap-1"><MoonIcon className="h-4 w-4 text-primary" /> Night <b className="tabular">{p.nightWorkforce} / {p.totalWorkstations}</b></span>
+            </div>
+
+            {/* Platform Workforce Positions & Trainee Status */}
+            <div className="border-t border-line p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-ink">Workforce positions & on-platform trainees</h3>
+                  <p className="text-xs text-ink-muted">Discrete position allocations and new recruit on-the-job training</p>
+                </div>
+                <Link to="/placement-queue">
+                  <Button size="xs" variant="secondary">Placement queue</Button>
+                </Link>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {(positions.data ?? []).map((pos) => {
+                  const trn = (trainings.data ?? []).find((t) => t.positionCode === pos.positionCode && (t.trainingStatus === 'IN_TRAINING' || t.trainingStatus === 'TRAINING_EXTENDED'));
+                  return (
+                    <div key={pos.id} className="rounded-xl border border-line bg-mist/30 p-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-ink">{pos.positionCode}</span>
+                        <StatusBadge status={pos.status} size="xs" />
+                      </div>
+                      <div className="mt-1.5 text-ink-muted">
+                        {pos.status === 'ACTIVE' && (
+                          <p className="font-medium text-ink truncate">{pos.assignedWorkerName || pos.assignedWorkerId}</p>
+                        )}
+                        {pos.status === 'TRAINING' && (
+                          <div className="space-y-0.5">
+                            <p className="font-semibold text-primary-700 truncate">{pos.assignedWorkerName || pos.assignedWorkerId}</p>
+                            {trn && (
+                              <p className="text-[11px] text-ink-subtle">
+                                Day {trn.completedTrainingDays} / {trn.requiredTrainingDays} · Ends {fmtDate(trn.expectedCompletionDate, 'MMM d')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {pos.status === 'VACANT' && (
+                          <p className="font-semibold text-emerald-700">Open Vacancy</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </Card>
           <Card>

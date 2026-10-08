@@ -25,7 +25,7 @@ function notifyAssignment(rep: Replacement) {
   if (!rep.freelancerId) return;
   const when = format(parseISO(rep.shiftStart), 'MMM d HH:mm');
   db.notifications.unshift({ id: db.seq.ntf(), type: rep.type === 'EMERGENCY' ? 'EMERGENCY_REPLACEMENT' : 'REPLACEMENT_ASSIGNED', title: `${rep.type === 'EMERGENCY' ? 'Emergency' : 'Planned'} assignment · ${rep.platformCode} / ${rep.dept}`, body: `Replacing ${rep.absentEmployeeId} on the ${rep.shift.toLowerCase()} shift starting ${when}. Workstation ${rep.workstationId}.`, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: '/my/assignments', recipientRoles: ['FREELANCER'], recipientId: rep.freelancerId });
-  db.notifications.unshift({ id: db.seq.ntf(), type: 'REPLACEMENT_ASSIGNED', title: `${rep.freelancerId} assigned to ${rep.platformCode} / ${rep.dept}`, body: `${rep.id}: covering ${rep.absentEmployeeId} (${rep.shift.toLowerCase()}, ${format(parseISO(rep.date), 'MMM d')}).`, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: `/replacements/${rep.id}`, recipientRoles: ['ADMIN', 'MANAGER'], recipientId: null });
+  db.notifications.unshift({ id: db.seq.ntf(), type: 'REPLACEMENT_ASSIGNED', title: `${rep.freelancerId} assigned to ${rep.platformCode} / ${rep.dept}`, body: `${rep.id}: covering ${rep.absentEmployeeId} (${rep.shift.toLowerCase()}, ${format(parseISO(rep.date), 'MMM d')}).`, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: `/replacements/${rep.id}`, recipientRoles: ['SUPERVISOR'], recipientId: null });
 }
 
 function runSearch(rep: Replacement, actor: {userId: string;name: string;role: string;}) {
@@ -33,9 +33,9 @@ function runSearch(rep: Replacement, actor: {userId: string;name: string;role: s
   rep.timeline = buildTimeline(rep);
   if (rep.status === 'ASSIGNED') {
     notifyAssignment(rep);
-    pushAudit({ at: nowIso(), actorId: actor.userId, actorName: actor.name, role: actor.role as 'MANAGER', action: 'REPLACEMENT_ASSIGNMENT', entity: 'Replacement', entityId: rep.id, platformCode: rep.platformCode, dept: rep.dept, previous: `${rep.absentEmployeeId} absent · unassigned`, next: `${rep.freelancerId} assigned (priority ${rep.freelancerPriority})`, reason: rep.reason, isOverride: false });
+    pushAudit({ at: nowIso(), actorId: actor.userId, actorName: actor.name, role: actor.role as 'SUPERVISOR', action: 'REPLACEMENT_ASSIGNMENT', entity: 'Replacement', entityId: rep.id, platformCode: rep.platformCode, dept: rep.dept, previous: `${rep.absentEmployeeId} absent · unassigned`, next: `${rep.freelancerId} assigned (priority ${rep.freelancerPriority})`, reason: rep.reason, isOverride: false });
   } else {
-    db.notifications.unshift({ id: db.seq.ntf(), type: 'EMERGENCY_REPLACEMENT', title: `No eligible replacement · ${rep.platformCode} / ${rep.dept}`, body: `${rep.id} requires manual action for ${rep.shift.toLowerCase()} on ${format(parseISO(rep.date), 'MMM d')}.`, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: `/replacements/${rep.id}`, recipientRoles: ['ADMIN', 'MANAGER'], recipientId: null });
+    db.notifications.unshift({ id: db.seq.ntf(), type: 'EMERGENCY_REPLACEMENT', title: `No eligible replacement · ${rep.platformCode} / ${rep.dept}`, body: `${rep.id} requires manual action for ${rep.shift.toLowerCase()} on ${format(parseISO(rep.date), 'MMM d')}.`, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: `/replacements/${rep.id}`, recipientRoles: ['SUPERVISOR'], recipientId: null });
   }
   return rep;
 }
@@ -50,7 +50,7 @@ export interface ReplacementDetail {
 export const replacementApi = {
   listReplacements: (q: ReplacementQuery) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const items = db.replacements.
     filter((r) => q.scope !== 'open' || !['CANCELLED'].includes(r.status)).
     filter((r) => !q.status || r.status === q.status).
@@ -99,7 +99,7 @@ export const replacementApi = {
 
   previewCandidates: (id: string) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const rep = db.replacements.find((r) => r.id === id);
     if (!rep) throw new ApiError('NOT_FOUND', `Replacement ${id} does not exist.`, 404);
     const c = evaluateCandidates(rep, db.freelancers, db.availability, db.replacements);
@@ -108,7 +108,7 @@ export const replacementApi = {
 
   reportAbsence: (input: {employeeId: string;date: string;reason: string;}) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     const e = db.employees.find((x) => x.id === input.employeeId);
     if (!e) throw new ApiError('NOT_FOUND', `Employee ${input.employeeId} does not exist.`, 404);
     if (input.date < TODAY) throw new ApiError('PAST_DATE', 'Absences cannot be recorded for past shifts.', 422);
@@ -135,7 +135,7 @@ export const replacementApi = {
 
   runSearch: (id: string) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     const rep = db.replacements.find((r) => r.id === id);
     if (!rep) throw new ApiError('NOT_FOUND', `Replacement ${id} does not exist.`, 404);
     if (!['PENDING', 'SEARCHING', 'FAILED'].includes(rep.status)) throw new ApiError('INVALID_STATE', `Search cannot run while the replacement is ${rep.status}.`, 409);
@@ -144,7 +144,7 @@ export const replacementApi = {
 
   assignFreelancer: (id: string, freelancerId: string) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     const rep = db.replacements.find((r) => r.id === id);
     if (!rep) throw new ApiError('NOT_FOUND', `Replacement ${id} does not exist.`, 404);
     if (['CANCELLED', 'CONFIRMED'].includes(rep.status)) throw new ApiError('INVALID_STATE', `Replacement is already ${rep.status}.`, 409);
@@ -173,7 +173,7 @@ export const replacementApi = {
 
   confirmReplacement: (id: string) =>
   respond(() => {
-    const a = requireRole('ADMIN', 'MANAGER', 'FREELANCER');
+    const a = requireRole('SUPERVISOR', 'FREELANCER');
     const rep = db.replacements.find((r) => r.id === id);
     if (!rep) throw new ApiError('NOT_FOUND', `Replacement ${id} does not exist.`, 404);
     if (a.role === 'FREELANCER' && rep.freelancerId !== a.userId) throw new ApiError('FORBIDDEN', 'This assignment belongs to another freelancer.', 403);
@@ -185,7 +185,7 @@ export const replacementApi = {
 
   cancelReplacement: (id: string, reason: string) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     const rep = db.replacements.find((r) => r.id === id);
     if (!rep) throw new ApiError('NOT_FOUND', `Replacement ${id} does not exist.`, 404);
     if (rep.status === 'CANCELLED') throw new ApiError('INVALID_STATE', 'Replacement is already cancelled.', 409);

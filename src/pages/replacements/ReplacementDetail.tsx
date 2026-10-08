@@ -21,7 +21,7 @@ import { deptNames, fmtDate, fmtShiftWindow } from '../../utils/format';
 export function ReplacementDetail() {
   const { id = '' } = useParams();
   const role = useSessionStore((s) => s.user?.role);
-  const isOps = role === 'ADMIN' || role === 'MANAGER';
+  const isOps = role === 'SUPERVISOR';
   const qc = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');

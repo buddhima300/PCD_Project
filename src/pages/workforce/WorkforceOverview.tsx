@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BriefcaseIcon, PlaneIcon, LockIcon, UserRoundCogIcon } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { CapacityMeter } from '../../components/ui/CapacityMeter';
 import { KpiTile } from '../../components/ui/KpiTile';
@@ -15,7 +16,20 @@ export function WorkforceOverview() {
   const q = useQuery({ queryKey: ['workforce-overview'], queryFn: () => api.getWorkforceOverview() });
   return (
     <div>
-      <PageHeader title="Workforce overview" description="Permanent employees are assigned to a platform, department and shift. Freelancers belong to one department and cover absences." />
+      <PageHeader
+        title="Workforce overview"
+        description="Permanent employees are assigned to a platform, department and shift. Freelancers belong to one department and cover absences."
+        actions={
+          <div className="flex gap-2">
+            <Link to="/candidates">
+              <Button size="sm">Candidates</Button>
+            </Link>
+            <Link to="/placement-queue">
+              <Button size="sm" variant="secondary">Placement Queue</Button>
+            </Link>
+          </div>
+        }
+      />
       <QueryView query={q}>
         {(d) =>
         <div className="space-y-4">

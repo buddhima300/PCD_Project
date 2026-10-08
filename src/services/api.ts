@@ -8,6 +8,7 @@ import { resourceApi } from './mock/resourceHandlers';
 import { schedulingApi } from './mock/schedulingHandlers';
 import { systemApi } from './mock/systemHandlers';
 import { workforceApi } from './mock/workforceHandlers';
+import { placementApi } from './mock/placementHandlers';
 
 export const api = {
   ...platformApi,
@@ -16,7 +17,8 @@ export const api = {
   ...replacementApi,
   ...resourceApi,
   ...systemApi,
-  ...reportApi
+  ...reportApi,
+  ...placementApi
 };
 
 export type Api = typeof api;

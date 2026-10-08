@@ -19,7 +19,11 @@ import type {
   ReplacementStatus,
   ReplacementType,
   RotationCycle,
-  ShiftCode } from
+  ShiftCode,
+  RecruitCandidate,
+  PlatformWorkforcePosition,
+  PlatformDemand,
+  PlatformTrainingAssignment } from
 '../../types/domain';
 import { AvailabilityMap, FreelancerRecord, OFFDAY_GROUP_LIMIT, buildTimeline, evaluateCandidates, summarizeFailures } from './rules';
 
@@ -73,8 +77,12 @@ const platforms: Platform[] = platformSeeds.map((p) => ({
 
 // ---------------- Employees ----------------
 function forcedVacancy(code: string, d: DeptCode, s: ShiftCode, slot: number): boolean | undefined {
-  if (code === 'KANE-13') return d === 'WD' && s === 'MORNING' && slot === 5;
-  if (code === 'KANE-14') return d === 'DP' && s === 'MORNING' && slot === 3;
+  if (code === 'KANE-13' && d === 'DP' && s === 'MORNING' && slot === 5) return true;
+  if (code === 'KANE-13' && d === 'WD' && s === 'MORNING' && slot === 5) return true;
+  if (code === 'KANE-14' && d === 'DP' && s === 'MORNING' && slot === 3) return true;
+  if (code === 'KANE-15' && d === 'DP' && s === 'MORNING' && (slot === 4 || slot === 5)) return true;
+  if (code === 'KANE-21' && d === 'DP') return false;
+  if (code === 'KANE-24' && d === 'DP' && s === 'MORNING' && slot === 5) return true;
   if (code === 'JAX-4' || code === 'REX-1') return false;
   return undefined;
 }
@@ -171,7 +179,8 @@ const groupKey = (p: string, d: DeptCode, date: string) => `${p}|${d}|${date}`;
 const groupCounts = new Map<string, number>();
 const empMonthCount = new Map<string, number>();
 
-function addOff(e: EmployeeRecord, date: string, status: OffDayRequest['status'], createdAt: string, reason?: string, override?: OffDayRequest['override']) {
+function addOff(e: EmployeeRecord | undefined, date: string, status: OffDayRequest['status'], createdAt: string, reason?: string, override?: OffDayRequest['override']) {
+  if (!e) return;
   offDays.push({
     id: `OFF-${pad(offSeq++, 6)}`,
     employeeId: e.id,
@@ -195,7 +204,7 @@ function addOff(e: EmployeeRecord, date: string, status: OffDayRequest['status']
 export const rejectionReason = (p: string, d: DeptCode, date: string) =>
 `Two employees from ${d} on ${p} already have approved off-days on ${format(parseISO(date), 'MMMM d')}.`;
 
-const k13 = (d: DeptCode, s: ShiftCode, slot: number) => findEmp('KANE-13', d, s, slot)!;
+const k13 = (d: DeptCode, s: ShiftCode, slot: number) => findEmp('KANE-13', d, s, slot);
 addOff(k13('DP', 'MORNING', 1), '2026-09-20', 'APPROVED', '2026-08-18T09:12:00');
 addOff(k13('DP', 'NIGHT', 2), '2026-09-20', 'APPROVED', '2026-08-18T11:40:00');
 addOff(me, '2026-09-04', 'APPROVED', '2026-08-19T08:02:00');
@@ -203,7 +212,7 @@ addOff(me, '2026-09-11', 'APPROVED', '2026-08-19T08:03:00');
 addOff(me, '2026-09-18', 'APPROVED', '2026-08-19T08:03:00');
 addOff(me, '2026-09-20', 'REJECTED', '2026-08-19T08:04:00', rejectionReason('KANE-13', 'DP', '2026-09-20'));
 addOff(k13('DP', 'MORNING', 3), TODAY, 'APPROVED', '2026-08-22T10:15:00');
-addOff(k13('DP', 'MORNING', 5), '2026-10-03', 'APPROVED', '2026-09-02T09:00:00');
+addOff(k13('DP', 'MORNING', 2), '2026-10-03', 'APPROVED', '2026-09-02T09:00:00');
 addOff(k13('DP', 'NIGHT', 1), '2026-10-03', 'APPROVED', '2026-09-03T14:21:00');
 addOff(k13('DP', 'NIGHT', 3), '2026-10-05', 'APPROVED', '2026-09-04T16:30:00');
 
@@ -372,9 +381,21 @@ function checklistGood(): Handover['checklist'] {
 
 function forcedStatus(p: string, d: DeptCode, slot: number): LaptopStatus | undefined {
   if (p === 'KANE-13') {
+    if (d === 'DP' && slot === 5) return 'AVAILABLE';
     if (d === 'DP' && slot === 3) return 'AVAILABLE';
     if (d === 'DP' && slot === 4) return 'HANDOVER_PENDING';
     if (d === 'WD' && slot === 5) return 'AVAILABLE';
+    return 'ASSIGNED';
+  }
+  if (p === 'KANE-15') {
+    if (d === 'DP' && (slot === 4 || slot === 5)) return 'AVAILABLE';
+    return 'ASSIGNED';
+  }
+  if (p === 'KANE-21') {
+    return 'ASSIGNED';
+  }
+  if (p === 'KANE-24') {
+    if (d === 'DP' && slot === 5) return 'MAINTENANCE';
     return 'ASSIGNED';
   }
   return undefined;
@@ -540,15 +561,15 @@ for (let i = 0; i < 7; i++) {
 }
 
 // ---------------- Notifications ----------------
-const M: NotificationItem['recipientRoles'] = ['ADMIN', 'MANAGER'];
+const M: NotificationItem['recipientRoles'] = ['SUPERVISOR'];
 const notifications: NotificationItem[] = [
 { id: 'NTF-9001', type: 'EMERGENCY_REPLACEMENT', title: 'Emergency replacement failed · REX-1 SAFETY', body: 'No eligible freelancer for REX-1 / SAFETY / Night tonight. Manual action required.', createdAt: `${TODAY}T16:22:00`, read: false, emailStatus: 'DELIVERED', link: '/replacements', recipientRoles: M, recipientId: null },
 { id: 'NTF-9002', type: 'REPLACEMENT_ASSIGNED', title: 'FL-00124 assigned to KANE-14 / DP', body: 'Emergency replacement for tonight’s night shift confirmed by Sofia Reyes.', createdAt: `${TODAY}T16:31:00`, read: false, emailStatus: 'DELIVERED', link: '/replacements', recipientRoles: M, recipientId: null },
 { id: 'NTF-9003', type: 'LAPTOP_INCIDENT', title: 'New incident on KANE-13 / WD', body: 'Mouse missing at morning handover on WS-KANE13-WD-02.', createdAt: `${TODAY}T07:44:00`, read: false, emailStatus: 'SENT', link: '/incidents', recipientRoles: M, recipientId: null },
 { id: 'NTF-9004', type: 'HANDOVER_REQUIRED', title: 'Evening handover window opens 19:15', body: 'Morning → Night handovers are due across all active platforms at 19:30.', createdAt: `${TODAY}T18:30:00`, read: false, emailStatus: 'NOT_SENT', link: '/pools', recipientRoles: M, recipientId: null },
-{ id: 'NTF-9005', type: 'ROTATION', title: 'Q4 shift rotation scheduled for Oct 01', body: 'All permanent employees swap Morning ↔ Night on Oct 01 07:30. Review the rotation preview.', createdAt: '2026-09-20T09:00:00', read: true, emailStatus: 'DELIVERED', link: '/rotation', recipientRoles: ['ADMIN', 'MANAGER', 'EMPLOYEE'], recipientId: null },
+{ id: 'NTF-9005', type: 'ROTATION', title: 'Q4 shift rotation scheduled for Oct 01', body: 'All permanent employees swap Morning ↔ Night on Oct 01 07:30. Review the rotation preview.', createdAt: '2026-09-20T09:00:00', read: true, emailStatus: 'DELIVERED', link: '/rotation', recipientRoles: ['SUPERVISOR', 'EMPLOYEE'], recipientId: null },
 { id: 'NTF-9006', type: 'PLATFORM_CONFIG_CHANGED', title: 'KANE-13 configuration updated', body: 'WD capacity changed 4 → 5 by Leila Haddad.', createdAt: '2026-09-08T11:12:00', read: true, emailStatus: 'DELIVERED', link: '/platforms/KANE-13', recipientRoles: M, recipientId: null },
-{ id: 'NTF-9007', type: 'ROSTER_UPDATED', title: 'October roster published', body: 'The October monthly roster is available for all platforms.', createdAt: '2026-09-22T10:00:00', read: true, emailStatus: 'DELIVERED', link: '/roster', recipientRoles: ['ADMIN', 'MANAGER', 'EMPLOYEE', 'FREELANCER'], recipientId: null },
+{ id: 'NTF-9007', type: 'ROSTER_UPDATED', title: 'October roster published', body: 'The October monthly roster is available for all platforms.', createdAt: '2026-09-22T10:00:00', read: true, emailStatus: 'DELIVERED', link: '/roster', recipientRoles: ['SUPERVISOR', 'EMPLOYEE', 'FREELANCER'], recipientId: null },
 { id: 'NTF-9010', type: 'HANDOVER_REQUIRED', title: 'Receive WS-KANE13-DP-04 before 19:30', body: 'Outgoing morning agent has confirmed handover of LAP on KANE-13 / DP. Review condition and confirm receipt.', createdAt: `${TODAY}T18:41:00`, read: false, emailStatus: 'SENT', link: '/handover', recipientRoles: ['EMPLOYEE'], recipientId: 'EMP-00421' },
 { id: 'NTF-9011', type: 'OFFDAY_REJECTED', title: 'Off-day rejected · Sep 20', body: 'Two employees from DP on KANE-13 already have approved off-days on September 20. Choose another date.', createdAt: '2026-08-19T08:04:00', read: true, emailStatus: 'DELIVERED', link: '/my/off-days', recipientRoles: ['EMPLOYEE'], recipientId: 'EMP-00421' },
 { id: 'NTF-9012', type: 'OFFDAY_APPROVED', title: 'Off-days approved · Sep 4, 11, 18', body: 'Three September off-days were approved automatically. 1 remaining this month.', createdAt: '2026-08-19T08:03:00', read: true, emailStatus: 'DELIVERED', link: '/my/off-days', recipientRoles: ['EMPLOYEE'], recipientId: 'EMP-00421' },
@@ -567,16 +588,16 @@ export function pushAudit(e: Omit<AuditEntry, 'id'>) {
   audit.unshift({ id: `AUD-${pad(auditSeq++, 6)}`, ...e });
 }
 const seedAudit: Omit<AuditEntry, 'id'>[] = [
-{ at: '2026-09-08T11:12:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'ADMIN', action: 'PLATFORM_CONFIG_CHANGE', entity: 'PlatformConfig', entityId: 'PLAT-KANE-013', platformCode: 'KANE-13', dept: 'WD', previous: 'WD capacity 4', next: 'WD capacity 5', reason: 'Withdrawal volume growth — Q3 forecast', isOverride: false },
-{ at: '2026-09-15T09:40:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'ADMIN', action: 'PLATFORM_CONFIG_CHANGE', entity: 'PlatformConfig', entityId: 'PLAT-KANE-020', platformCode: 'KANE-20', dept: 'SAFETY', previous: 'SAFETY not operating', next: 'SAFETY capacity 1', reason: 'Fraud screening launched on KANE-20', isOverride: false },
-{ at: '2026-08-26T16:00:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'ADMIN', action: 'PLATFORM_STATUS_CHANGE', entity: 'Platform', entityId: 'PLAT-JAX-015', platformCode: 'JAX-15', dept: null, previous: 'ACTIVE', next: 'INACTIVE', reason: 'Brand migration paused by client', isOverride: false },
-{ at: '2026-09-14T15:40:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'MANAGER', action: 'OFFDAY_OVERRIDE', entity: 'OffDayRequest', entityId: 'JAX-4/WD/2026-09-28', platformCode: 'JAX-4', dept: 'WD', previous: 'REJECTED · capacity 2 / 2', next: 'OVERRIDE_APPROVED · capacity 3 / 2', reason: 'Bereavement — compassionate exception approved', isOverride: true },
-{ at: '2026-09-18T10:05:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'MANAGER', action: 'FREELANCER_PRIORITY_CHANGE', entity: 'FreelancerPriority', entityId: 'DP', platformCode: null, dept: 'DP', previous: 'FL-00113 #1, FL-00124 #12', next: 'FL-00124 #1, FL-00113 #2', reason: 'FL-00124 cleared for KANE and JAX — highest reliability', isOverride: false },
+{ at: '2026-09-08T11:12:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'SUPERVISOR', action: 'PLATFORM_CONFIG_CHANGE', entity: 'PlatformConfig', entityId: 'PLAT-KANE-013', platformCode: 'KANE-13', dept: 'WD', previous: 'WD capacity 4', next: 'WD capacity 5', reason: 'Withdrawal volume growth — Q3 forecast', isOverride: false },
+{ at: '2026-09-15T09:40:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'SUPERVISOR', action: 'PLATFORM_CONFIG_CHANGE', entity: 'PlatformConfig', entityId: 'PLAT-KANE-020', platformCode: 'KANE-20', dept: 'SAFETY', previous: 'SAFETY not operating', next: 'SAFETY capacity 1', reason: 'Fraud screening launched on KANE-20', isOverride: false },
+{ at: '2026-08-26T16:00:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'SUPERVISOR', action: 'PLATFORM_STATUS_CHANGE', entity: 'Platform', entityId: 'PLAT-JAX-015', platformCode: 'JAX-15', dept: null, previous: 'ACTIVE', next: 'INACTIVE', reason: 'Brand migration paused by client', isOverride: false },
+{ at: '2026-09-14T15:40:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'SUPERVISOR', action: 'OFFDAY_OVERRIDE', entity: 'OffDayRequest', entityId: 'JAX-4/WD/2026-09-28', platformCode: 'JAX-4', dept: 'WD', previous: 'REJECTED · capacity 2 / 2', next: 'OVERRIDE_APPROVED · capacity 3 / 2', reason: 'Bereavement — compassionate exception approved', isOverride: true },
+{ at: '2026-09-18T10:05:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'SUPERVISOR', action: 'FREELANCER_PRIORITY_CHANGE', entity: 'FreelancerPriority', entityId: 'DP', platformCode: null, dept: 'DP', previous: 'FL-00113 #1, FL-00124 #12', next: 'FL-00124 #1, FL-00113 #2', reason: 'FL-00124 cleared for KANE and JAX — highest reliability', isOverride: false },
 { at: '2026-09-20T09:00:00', actorId: 'SYSTEM', actorName: 'Rotation scheduler', role: 'SYSTEM', action: 'ROTATION_SCHEDULED', entity: 'RotationCycle', entityId: 'CYC-2026-Q4', platformCode: null, dept: null, previous: 'Q3 2026 current', next: 'Q4 2026 scheduled Oct 01 07:30', reason: 'Quarterly rotation policy', isOverride: false },
-{ at: '2026-09-11T13:22:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'ADMIN', action: 'ACCOUNT_CHANGE', entity: 'UserAccount', entityId: 'FL-00106', platformCode: null, dept: 'GS', previous: 'ACTIVE', next: 'LOCKED', reason: 'Contract suspended pending review', isOverride: false },
-{ at: `${TODAY}T07:44:00`, actorId: k13('WD', 'MORNING', 2).id, actorName: k13('WD', 'MORNING', 2).name, role: 'EMPLOYEE', action: 'INCIDENT_CREATED', entity: 'Incident', entityId: incidents.find((i) => i.platformCode === 'KANE-13')?.id ?? 'INC', platformCode: 'KANE-13', dept: 'WD', previous: '—', next: 'OPEN · LOW', reason: 'Mouse missing at morning handover', isOverride: false },
-{ at: '2026-09-02T08:30:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'MANAGER', action: 'WORKFORCE_ASSIGNMENT_CHANGE', entity: 'Employee', entityId: 'EMP-00087', platformCode: 'KANE-7', dept: 'DP', previous: 'Platform KANE-1', next: 'Platform KANE-7', reason: 'KANE-7 DP expansion staffing', isOverride: false },
-{ at: '2026-09-21T14:12:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'MANAGER', action: 'SHIFT_CHANGE', entity: 'Employee', entityId: 'EMP-00152', platformCode: 'IRIS-1', dept: 'WD', previous: 'Night', next: 'Morning (temporary)', reason: 'Medical accommodation — 2 weeks', isOverride: true }];
+{ at: '2026-09-11T13:22:00', actorId: 'USR-ADM-001', actorName: 'Leila Haddad', role: 'SUPERVISOR', action: 'ACCOUNT_CHANGE', entity: 'UserAccount', entityId: 'FL-00106', platformCode: null, dept: 'GS', previous: 'ACTIVE', next: 'LOCKED', reason: 'Contract suspended pending review', isOverride: false },
+{ at: `${TODAY}T07:44:00`, actorId: k13('WD', 'MORNING', 2)?.id ?? 'EMP-00100', actorName: k13('WD', 'MORNING', 2)?.name ?? 'Agent', role: 'EMPLOYEE', action: 'INCIDENT_CREATED', entity: 'Incident', entityId: incidents.find((i) => i.platformCode === 'KANE-13')?.id ?? 'INC', platformCode: 'KANE-13', dept: 'WD', previous: '—', next: 'OPEN · LOW', reason: 'Mouse missing at morning handover', isOverride: false },
+{ at: '2026-09-02T08:30:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'SUPERVISOR', action: 'WORKFORCE_ASSIGNMENT_CHANGE', entity: 'Employee', entityId: 'EMP-00087', platformCode: 'KANE-7', dept: 'DP', previous: 'Platform KANE-1', next: 'Platform KANE-7', reason: 'KANE-7 DP expansion staffing', isOverride: false },
+{ at: '2026-09-21T14:12:00', actorId: 'USR-MGR-014', actorName: 'Daniel Mwangi', role: 'SUPERVISOR', action: 'SHIFT_CHANGE', entity: 'Employee', entityId: 'EMP-00152', platformCode: 'IRIS-1', dept: 'WD', previous: 'Night', next: 'Morning (temporary)', reason: 'Medical accommodation — 2 weeks', isOverride: true }];
 
 for (const a of seedAudit.sort((x, y) => x.at.localeCompare(y.at))) pushAudit(a);
 for (const rep of replacements.filter((x) => x.freelancerId)) {
@@ -599,6 +620,229 @@ const rotationCycles: RotationCycle[] = [
 { id: 'CYC-2025-Q3', label: 'Q3 2025', start: '2025-07-01', end: '2025-09-30', morning: morningNow - 20, night: nightNow - 18, executedAt: '2025-07-01T07:30:00', executedBy: 'Rotation scheduler', status: 'COMPLETED' }];
 
 
+// ---------------- Candidates ----------------
+const candidates: RecruitCandidate[] = [
+  {
+    id: 'CND-1052',
+    name: 'John Silva',
+    email: 'john.silva@candidate.relayops.com',
+    phone: '+63 917 842 1052',
+    interviewDate: '2026-10-04',
+    interviewResult: 'SELECTED',
+    employmentType: 'PERMANENT',
+    dept: 'DP',
+    position: 'Deposit Agent',
+    notes: 'Candidate completed panel interview with high marks in payment reconciliations and fast typing speed. Recommended for immediate platform placement.',
+    status: 'SELECTED',
+    createdAt: '2026-10-01'
+  },
+  {
+    id: 'CND-1053',
+    name: 'Elena Rostova',
+    email: 'elena.rostova@candidate.relayops.com',
+    phone: '+63 917 842 1053',
+    interviewDate: '2026-10-05',
+    interviewResult: 'SELECTED',
+    employmentType: 'FREELANCER',
+    dept: 'WD',
+    position: 'Withdrawal Agent',
+    notes: 'Prior 2 years experience in sportsbook payments. Availability fits weekend morning coverage.',
+    status: 'SELECTED',
+    createdAt: '2026-10-02'
+  },
+  {
+    id: 'CND-1054',
+    name: 'Marcus Chen',
+    email: 'marcus.chen@candidate.relayops.com',
+    phone: '+63 917 842 1054',
+    interviewDate: '2026-10-05',
+    interviewResult: 'SELECTED',
+    employmentType: 'PERMANENT',
+    dept: 'GS',
+    position: 'Accounts Officer',
+    notes: 'Cleared KYC compliance verification assessment. Onboarding documentation pending completion.',
+    status: 'ONBOARDING',
+    createdAt: '2026-10-03'
+  },
+  {
+    id: 'CND-1055',
+    name: 'Aisha Patel',
+    email: 'aisha.patel@candidate.relayops.com',
+    phone: '+63 917 842 1055',
+    interviewDate: '2026-10-08',
+    interviewResult: 'PENDING',
+    employmentType: 'PERMANENT',
+    dept: 'DP',
+    position: 'Deposit Agent',
+    notes: 'Interview scheduled for tomorrow with Operations Lead.',
+    status: 'INTERVIEW_SCHEDULED',
+    createdAt: '2026-10-04'
+  },
+  {
+    id: 'CND-1056',
+    name: 'Lucas Vance',
+    email: 'lucas.vance@candidate.relayops.com',
+    phone: '+63 917 842 1056',
+    interviewDate: '2026-10-06',
+    interviewResult: 'RECOMMENDED',
+    employmentType: 'FREELANCER',
+    dept: 'SAFETY',
+    position: 'Safety Analyst',
+    notes: 'Passed fraud screening test. Waiting for platform capacity in SAFETY.',
+    status: 'WAITLISTED',
+    createdAt: '2026-10-04'
+  }
+];
+
+// ---------------- Platform Workforce Positions ----------------
+const platformPositions: PlatformWorkforcePosition[] = [];
+for (const p of platforms) {
+  if (p.status !== 'ACTIVE') continue;
+  for (const d of DEPT_ORDER) {
+    const cap = p.departments[d];
+    if (!cap) continue;
+    for (let slot = 1; slot <= cap; slot++) {
+      const code = `${d}-${pad(slot, 2)}`;
+      const emp = findEmp(p.code, d, 'MORNING', slot) ?? findEmp(p.code, d, 'NIGHT', slot);
+      const ws = wsIdOf(p.code, d, slot);
+      let status: PlatformWorkforcePosition['status'] = emp ? 'ACTIVE' : 'VACANT';
+      let assignedWorkerId: string | null = emp ? emp.id : null;
+      let assignedWorkerName: string | null = emp ? emp.name : null;
+      let assignedWorkerType: 'PERMANENT' | 'FREELANCER' | null = emp ? 'PERMANENT' : null;
+
+      // Special case: KANE-13 DP-05 is VACANT
+      if (p.code === 'KANE-13' && d === 'DP' && slot === 5) {
+        status = 'VACANT';
+        assignedWorkerId = null;
+        assignedWorkerName = null;
+        assignedWorkerType = null;
+      }
+
+      // Special case: KANE-15 DP-04 is in TRAINING (EMP-01049)
+      if (p.code === 'KANE-15' && d === 'DP' && slot === 4) {
+        status = 'TRAINING';
+        assignedWorkerId = 'EMP-01049';
+        assignedWorkerName = 'Jose Ramos';
+        assignedWorkerType = 'PERMANENT';
+      }
+
+      platformPositions.push({
+        id: `POS-${compactCode(p.code)}-${d}-${pad(slot, 2)}`,
+        platformCode: p.code,
+        categoryCode: p.categoryCode,
+        dept: d,
+        positionCode: code,
+        slot,
+        shift: 'MORNING',
+        status,
+        assignedWorkerId,
+        assignedWorkerName,
+        assignedWorkerType,
+        reservedForWorkerId: null,
+        workstationId: ws,
+        updatedAt: TODAY
+      });
+    }
+  }
+}
+
+// ---------------- Platform Training Assignments ----------------
+const trainingAssignments: PlatformTrainingAssignment[] = [
+  {
+    id: 'TRN-2026-0041',
+    workerId: 'EMP-01048',
+    workerName: 'Maria Santos',
+    workerType: 'PERMANENT',
+    platformCode: 'KANE-7',
+    categoryCode: 'KANE',
+    dept: 'DP',
+    positionCode: 'DP-06',
+    shift: 'MORNING',
+    workstationPoolId: 'POOL-KANE7-DP',
+    workstationId: 'WS-KANE7-DP-06',
+    laptopAssetId: 'LAP-00045',
+    trainingStartDate: plusDays(TODAY, -4),
+    expectedCompletionDate: plusDays(TODAY, 1),
+    actualCompletionDate: null,
+    requiredTrainingDays: 5,
+    completedTrainingDays: 4,
+    trainingStatus: 'IN_TRAINING',
+    evaluation: null,
+    dailyLogs: [
+      { day: 1, date: plusDays(TODAY, -4), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Platform access set up, verified 2FA, intro to sportsbook payment gateway.' },
+      { day: 2, date: plusDays(TODAY, -3), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Deposit matching exception handling, batch ticket processing.' },
+      { day: 3, date: plusDays(TODAY, -2), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Shadowed senior agent on live deposit issues.' },
+      { day: 4, date: plusDays(TODAY, -1), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Independent ticket handling under supervisor review. High accuracy.' },
+      { day: 5, date: TODAY, status: 'IN_PROGRESS', attendance: 'PRESENT', notes: 'Final operational shift prior to supervisor qualification evaluation.' }
+    ],
+    assignedBy: 'Leila Haddad',
+    createdAt: `${plusDays(TODAY, -4)}T08:30:00`,
+    updatedAt: `${TODAY}T09:00:00`
+  },
+  {
+    id: 'TRN-2026-0042',
+    workerId: 'EMP-01049',
+    workerName: 'Jose Ramos',
+    workerType: 'PERMANENT',
+    platformCode: 'KANE-15',
+    categoryCode: 'KANE',
+    dept: 'DP',
+    positionCode: 'DP-04',
+    shift: 'MORNING',
+    workstationPoolId: 'POOL-KANE15-DP',
+    workstationId: 'WS-KANE15-DP-04',
+    laptopAssetId: 'LAP-00088',
+    trainingStartDate: plusDays(TODAY, -2),
+    expectedCompletionDate: plusDays(TODAY, 3),
+    actualCompletionDate: null,
+    requiredTrainingDays: 5,
+    completedTrainingDays: 2,
+    trainingStatus: 'IN_TRAINING',
+    evaluation: null,
+    dailyLogs: [
+      { day: 1, date: plusDays(TODAY, -2), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Onboarding workstation configuration and platform security review.' },
+      { day: 2, date: plusDays(TODAY, -1), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Deposit dispute escalation procedures.' },
+      { day: 3, date: TODAY, status: 'IN_PROGRESS', attendance: 'PRESENT', notes: 'Payment gateway testing and transaction queue management.' },
+      { day: 4, date: plusDays(TODAY, 1), status: 'SCHEDULED', attendance: 'PRESENT' },
+      { day: 5, date: plusDays(TODAY, 2), status: 'SCHEDULED', attendance: 'PRESENT' }
+    ],
+    assignedBy: 'Leila Haddad',
+    createdAt: `${plusDays(TODAY, -2)}T08:15:00`,
+    updatedAt: `${TODAY}T09:10:00`
+  },
+  {
+    id: 'TRN-2026-0043',
+    workerId: 'FL-00130',
+    workerName: 'Mark Cruz',
+    workerType: 'FREELANCER',
+    platformCode: 'JAX-4',
+    categoryCode: 'JAX',
+    dept: 'WD',
+    positionCode: 'WD-02',
+    shift: 'MORNING',
+    workstationPoolId: 'POOL-JAX4-WD',
+    workstationId: 'WS-JAX4-WD-02',
+    laptopAssetId: 'LAP-00122',
+    trainingStartDate: plusDays(TODAY, -4),
+    expectedCompletionDate: plusDays(TODAY, 1),
+    requiredTrainingDays: 5,
+    completedTrainingDays: 4,
+    trainingStatus: 'IN_TRAINING',
+    evaluation: null,
+    actualCompletionDate: null,
+    dailyLogs: [
+      { day: 1, date: plusDays(TODAY, -4), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Withdrawal verification rules for VIP tiers.' },
+      { day: 2, date: plusDays(TODAY, -3), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Anti-money laundering threshold limits and bank wire validations.' },
+      { day: 3, date: plusDays(TODAY, -2), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Payout queue handling under supervision.' },
+      { day: 4, date: plusDays(TODAY, -1), status: 'COMPLETED', attendance: 'PRESENT', notes: 'Platform JAX-4 specific back-office modules.' },
+      { day: 5, date: TODAY, status: 'IN_PROGRESS', attendance: 'PRESENT', notes: 'Shift shadowing and review.' }
+    ],
+    assignedBy: 'Daniel Mwangi',
+    createdAt: `${plusDays(TODAY, -4)}T09:00:00`,
+    updatedAt: `${TODAY}T08:45:00`
+  }
+];
+
 export const db = {
   categories,
   platforms,
@@ -613,5 +857,16 @@ export const db = {
   notifications,
   audit,
   rotationCycles,
-  seq: { off: () => `OFF-${pad(offSeq++, 6)}`, rep: () => `REP-${pad(2600 + repSeq++, 5)}`, inc: () => `INC-2026-${pad(incSeq++, 4)}`, lap: () => `LAP-${pad(lapSeq++, 5)}`, ntf: () => `NTF-${pad(9100 + auditSeq, 4)}-${Math.floor(Math.random() * 1000)}` }
+  candidates,
+  platformPositions,
+  trainingAssignments,
+  seq: {
+    off: () => `OFF-${pad(offSeq++, 6)}`,
+    rep: () => `REP-${pad(2600 + repSeq++, 5)}`,
+    inc: () => `INC-2026-${pad(incSeq++, 4)}`,
+    lap: () => `LAP-${pad(lapSeq++, 5)}`,
+    ntf: () => `NTF-${pad(9100 + auditSeq, 4)}-${Math.floor(Math.random() * 1000)}`,
+    trn: () => `TRN-2026-${pad(Math.floor(1050 + Math.random() * 8900), 4)}`,
+    cnd: () => `CND-${pad(Math.floor(1060 + Math.random() * 8900), 4)}`
+  }
 };

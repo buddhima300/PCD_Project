@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { UserPlusIcon } from 'lucide-react';
 import { AvailabilityBoard } from '../../components/freelancer/AvailabilityBoard';
 import { PriorityManager } from '../../components/freelancer/PriorityManager';
+import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
 import { Select } from '../../components/ui/Field';
@@ -33,7 +35,7 @@ export function Freelancers() {
 
   return (
     <div>
-      <PageHeader title="Freelancers" description="Replacement workforce. Each freelancer belongs to one department and may only replace employees from that department." />
+      <PageHeader title="Freelancers" description="Replacement workforce. Each freelancer belongs to one department and may only replace employees from that department." actions={<Link to="/register"><Button icon={<UserPlusIcon className="h-4 w-4" />}>Register staff</Button></Link>} />
       <Tabs className="mb-4" value={tab} onChange={(t) => setParams({ tab: t })} tabs={[{ id: 'directory', label: 'Directory' }, { id: 'priority', label: 'Priority management' }, { id: 'availability', label: 'Availability' }]} />
       {tab === 'priority' && <PriorityManager />}
       {tab === 'availability' && <AvailabilityBoard />}

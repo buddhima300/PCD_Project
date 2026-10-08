@@ -7,7 +7,7 @@ interface KpiTileProps {
   label: string;
   value: React.ReactNode;
   sub?: React.ReactNode;
-  icon: BoxIcon;
+  icon: typeof BoxIcon;
   tone?: Tone;
   to?: string;
   emphasis?: boolean;

@@ -28,7 +28,7 @@ export function LoadingBlock({
 interface EmptyProps {
   title: string;
   description?: string;
-  icon?: BoxIcon;
+  icon?: typeof BoxIcon;
   action?: React.ReactNode;
   className?: string;
 }

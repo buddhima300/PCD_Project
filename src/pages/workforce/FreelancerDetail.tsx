@@ -30,10 +30,11 @@ export function FreelancerDetail() {
           <Card className="p-5">
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between"><dt className="text-ink-muted">Department</dt><dd><DeptTag dept={f.dept} full /></dd></div>
+              <div className="flex justify-between"><dt className="text-ink-muted">Lifecycle</dt><dd><StatusBadge status={f.lifecycle ?? 'PRODUCTION_ACTIVE'} size="xs" /></dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Priority</dt><dd className="font-semibold">#{f.priority}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Cleared for</dt><dd>{f.compatibleCategories.join(' · ')}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Current assignment</dt><dd>{f.currentAssignmentId ? <Link to={`/replacements/${f.currentAssignmentId}`} className="font-mono text-xs hover:text-primary">{f.currentAssignmentId}</Link> : '—'}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-muted">Current platform</dt><dd>{f.currentPlatform ?? '—'}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-muted">Assigned platform</dt><dd className="font-semibold">{f.currentPlatform ?? '—'}</dd></div>
             </dl>
             <div className="mt-4 border-t border-line pt-4">
               <CapacityMeter label="Workload · rolling 24h" used={f.workloadUsed} capacity={f.workloadLimit} suffix="shifts" size="md" />

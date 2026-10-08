@@ -27,7 +27,19 @@ export function FreelancerDashboard() {
       <PageHeader
         title={`Good evening, ${w.person.name.split(' ')[0]}`}
         description={`${w.person.id} · ${deptNames[w.person.dept]} freelancer · Priority ${w.person.priority} in ${w.person.dept}`} />
-      
+
+      {/* Platform Compatibility Banner */}
+      <div className="mb-4 rounded-xl border border-line bg-surface p-3.5 flex items-center justify-between text-xs">
+        <div>
+          <span className="font-semibold text-ink">Verified Platform Compatibility:</span>{' '}
+          <span className="text-primary-700 font-bold">{w.person.compatibleCategories?.join(', ') || 'KANE, JAX'}</span>
+          <span className="ml-2 text-ink-muted">· Direct on-platform training completed</span>
+        </div>
+        <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+          Qualified for Production
+        </span>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-12">
         <Card className="xl:col-span-8">
           <div className="p-5">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftRightIcon, ArrowRightIcon, CalendarOffIcon, LaptopIcon, MoonIcon, RepeatIcon, SunIcon } from 'lucide-react';
+import { ArrowLeftRightIcon, ArrowRightIcon, CalendarOffIcon, GraduationCapIcon, LaptopIcon, MoonIcon, RepeatIcon, SunIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { CapacityMeter } from '../../components/ui/CapacityMeter';
@@ -25,6 +25,26 @@ export function EmployeeDashboard() {
   return (
     <div>
       <PageHeader title={`Good evening, ${w.person.name.split(' ')[0]}`} description="Your platform, shift and workstation for today." />
+
+      {/* On-Platform Training Notice */}
+      <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50/70 p-4">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-primary p-2 text-white">
+            <GraduationCapIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-primary-950">
+              Assigned Platform: {w.platform?.code} ({w.person.dept} — {deptNames[w.person.dept]})
+            </h3>
+            <p className="mt-1 text-xs text-primary-800">
+              Platform Workforce Position: <strong>{w.person.dept}-04</strong> · Direct On-The-Job Placement.
+            </p>
+            <p className="mt-0.5 text-xs text-emerald-800 font-medium">
+              &ldquo;New workers train on their assigned production platform for 5 working days and remain permanently assigned to that same platform upon passing evaluation.&rdquo;
+            </p>
+          </div>
+        </div>
+      </div>
       <div className="grid gap-4 xl:grid-cols-12">
         <Card className="xl:col-span-8">
           <div className="p-5">

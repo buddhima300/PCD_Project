@@ -67,7 +67,7 @@ function createIncidentFromHandover(h: Handover, c: ChecklistResult, reporterId:
       lap.condition = 'DAMAGED';
     }
   }
-  db.notifications.unshift({ id: db.seq.ntf(), type: 'LAPTOP_INCIDENT', title: `Incident ${inc.id} · ${h.platformCode} / ${h.dept}`, body: inc.title, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: '/incidents', recipientRoles: ['ADMIN', 'MANAGER'], recipientId: null });
+  db.notifications.unshift({ id: db.seq.ntf(), type: 'LAPTOP_INCIDENT', title: `Incident ${inc.id} · ${h.platformCode} / ${h.dept}`, body: inc.title, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: '/incidents', recipientRoles: ['SUPERVISOR'], recipientId: null });
   pushAudit({ at: nowIso(), actorId: reporterId, actorName: reporterName, role: reporterId.startsWith('FL') ? 'FREELANCER' : 'EMPLOYEE', action: 'INCIDENT_CREATED', entity: 'Incident', entityId: inc.id, platformCode: h.platformCode, dept: h.dept, previous: '—', next: `${inc.status} · ${inc.severity}`, reason: inc.title, isOverride: false });
   return inc;
 }
@@ -75,7 +75,7 @@ function createIncidentFromHandover(h: Handover, c: ChecklistResult, reporterId:
 export const resourceApi = {
   listPools: (q: PoolQuery): Promise<PoolSummary[]> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     return allPools().
     filter((p) => !q.category || p.categoryCode === q.category).
     filter((p) => !q.platform || p.platformCode === q.platform).
@@ -92,7 +92,7 @@ export const resourceApi = {
 
   getPool: (id: string) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER', 'EMPLOYEE', 'FREELANCER');
+    requireRole('SUPERVISOR', 'EMPLOYEE', 'FREELANCER');
     const lap = db.laptops.find((l) => l.poolId === id);
     if (!lap) throw new ApiError('NOT_FOUND', `Workstation pool ${id} does not exist.`, 404);
     const p = db.platforms.find((x) => x.code === lap.platformCode)!;
@@ -106,7 +106,7 @@ export const resourceApi = {
 
   listLaptops: (q: LaptopQuery): Promise<Paged<Laptop>> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const list = db.laptops.
     filter((l) => !q.status || l.status === q.status).
     filter((l) => !q.platform || l.platformCode === q.platform).
@@ -119,7 +119,7 @@ export const resourceApi = {
 
   getLaptop: (assetId: string) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER', 'EMPLOYEE', 'FREELANCER');
+    requireRole('SUPERVISOR', 'EMPLOYEE', 'FREELANCER');
     const lap = db.laptops.find((l) => l.assetId === assetId);
     if (!lap) throw new ApiError('NOT_FOUND', `Laptop ${assetId} does not exist.`, 404);
     const hos = db.handovers.filter((h) => h.assetId === assetId);
@@ -133,7 +133,7 @@ export const resourceApi = {
 
   assignLaptop: (assetId: string, userId: string) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     const lap = db.laptops.find((l) => l.assetId === assetId);
     if (!lap) throw new ApiError('NOT_FOUND', `Laptop ${assetId} does not exist.`, 404);
     if (lap.status !== 'AVAILABLE') {
@@ -158,7 +158,7 @@ export const resourceApi = {
 
   listHandovers: (q: {date?: string;platform?: string;dept?: DeptCode | '';status?: HandoverStatus | '';}) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     return db.handovers.
     filter((h) => !q.date || h.scheduledAt.startsWith(q.date)).
     filter((h) => !q.platform || h.platformCode === q.platform).
@@ -178,7 +178,7 @@ export const resourceApi = {
 
   confirmOutgoing: (handoverId: string, checklist: ChecklistResult) =>
   respond(() => {
-    const a = requireRole('EMPLOYEE', 'FREELANCER', 'MANAGER', 'ADMIN');
+    const a = requireRole('EMPLOYEE', 'FREELANCER', 'SUPERVISOR');
     const h = db.handovers.find((x) => x.id === handoverId);
     if (!h) throw new ApiError('NOT_FOUND', 'Handover not found.', 404);
     if ((a.role === 'EMPLOYEE' || a.role === 'FREELANCER') && h.outgoingId !== a.userId) throw new ApiError('FORBIDDEN', 'Only the outgoing employee can confirm this handover.', 403);
@@ -206,7 +206,7 @@ export const resourceApi = {
 
   confirmReceipt: (handoverId: string, input: {accepted: boolean;notes: string;}) =>
   respond(() => {
-    const a = requireRole('EMPLOYEE', 'FREELANCER', 'MANAGER', 'ADMIN');
+    const a = requireRole('EMPLOYEE', 'FREELANCER', 'SUPERVISOR');
     const h = db.handovers.find((x) => x.id === handoverId);
     if (!h) throw new ApiError('NOT_FOUND', 'Handover not found.', 404);
     if ((a.role === 'EMPLOYEE' || a.role === 'FREELANCER') && h.incomingId !== a.userId) throw new ApiError('FORBIDDEN', 'Only the incoming employee can confirm receipt.', 403);
@@ -238,7 +238,7 @@ export const resourceApi = {
   respond(() => {
     const a = currentAuth();
     return db.incidents.
-    filter((i) => a.role === 'ADMIN' || a.role === 'MANAGER' ? true : i.reportedById === a.userId).
+    filter((i) => a.role === 'SUPERVISOR' ? true : i.reportedById === a.userId).
     filter((i) => !q.status || i.status === q.status).
     filter((i) => !q.severity || i.severity === q.severity).
     filter((i) => !q.platform || i.platformCode === q.platform).
@@ -263,14 +263,14 @@ export const resourceApi = {
       lap.status = 'INCIDENT';
       lap.condition = 'DAMAGED';
     }
-    db.notifications.unshift({ id: db.seq.ntf(), type: 'LAPTOP_INCIDENT', title: `Incident ${inc.id} · ${lap.platformCode} / ${lap.dept}`, body: inc.title, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: '/incidents', recipientRoles: ['ADMIN', 'MANAGER'], recipientId: null });
+    db.notifications.unshift({ id: db.seq.ntf(), type: 'LAPTOP_INCIDENT', title: `Incident ${inc.id} · ${lap.platformCode} / ${lap.dept}`, body: inc.title, createdAt: nowIso(), read: false, emailStatus: 'SENT', link: '/incidents', recipientRoles: ['SUPERVISOR'], recipientId: null });
     pushAudit({ at: nowIso(), actorId: a.userId, actorName: a.name, role: a.role, action: 'INCIDENT_CREATED', entity: 'Incident', entityId: inc.id, platformCode: lap.platformCode, dept: lap.dept, previous: '—', next: `OPEN · ${inc.severity}`, reason: inc.title, isOverride: false });
     return inc;
   }),
 
   updateIncidentStatus: (id: string, status: IncidentStatus, note: string) =>
   respond(() => {
-    const a = requireRole('ADMIN', 'MANAGER');
+    const a = requireRole('SUPERVISOR');
     const inc = db.incidents.find((i) => i.id === id);
     if (!inc) throw new ApiError('NOT_FOUND', `Incident ${id} does not exist.`, 404);
     const prev = inc.status;

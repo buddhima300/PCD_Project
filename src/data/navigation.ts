@@ -1,8 +1,8 @@
 import {
   ActivityIcon, ArrowLeftRightIcon, BarChart3Icon, BellIcon, BriefcaseIcon, Building2Icon, CalendarCheckIcon, CalendarDaysIcon,
-  CalendarOffIcon, ClipboardListIcon, Clock3Icon, GaugeIcon, LaptopIcon, LayersIcon, LayoutDashboardIcon, MonitorSmartphoneIcon,
-  RefreshCwIcon, RepeatIcon, ScrollTextIcon, ServerIcon, SettingsIcon, ShieldAlertIcon, SlidersHorizontalIcon, UserCircleIcon,
-  UserRoundCogIcon, UsersIcon, TriangleAlertIcon, type LucideIcon } from
+  CalendarOffIcon, ClipboardListIcon, Clock3Icon, GaugeIcon, GraduationCapIcon, LaptopIcon, LayersIcon, LayoutDashboardIcon, MonitorSmartphoneIcon,
+  RefreshCwIcon, RepeatIcon, ScrollTextIcon, ServerIcon, SettingsIcon, ShieldAlertIcon, SlidersHorizontalIcon, SparklesIcon, UserCheckIcon,
+  UserCircleIcon, UserPlusIcon, UserRoundCogIcon, UsersIcon, TriangleAlertIcon, type LucideIcon } from
 'lucide-react';
 import type { Role } from '../types/domain';
 
@@ -14,12 +14,17 @@ export interface NavItem {
 }
 
 export const navByRole: Record<Role, NavItem[]> = {
-  ADMIN: [
+  SUPERVISOR: [
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon, group: 'Overview' },
   { label: 'Platform Operations', to: '/operations', icon: ActivityIcon, group: 'Overview' },
+  { label: 'Candidates', to: '/candidates', icon: UserCheckIcon, group: 'Recruitment' },
+  { label: 'Register Staff', to: '/register', icon: UserPlusIcon, group: 'Recruitment' },
   { label: 'Workforce', to: '/workforce', icon: UsersIcon, group: 'Workforce' },
+  { label: 'Platform Demand', to: '/platform-demand', icon: GaugeIcon, group: 'Workforce' },
+  { label: 'Placement Queue', to: '/placement-queue', icon: SparklesIcon, group: 'Workforce' },
   { label: 'Employees', to: '/employees', icon: BriefcaseIcon, group: 'Workforce' },
   { label: 'Freelancers', to: '/freelancers', icon: UserRoundCogIcon, group: 'Workforce' },
+  { label: 'On-Platform Training', to: '/training', icon: GraduationCapIcon, group: 'Training' },
   { label: 'Platform Categories', to: '/categories', icon: LayersIcon, group: 'Platforms' },
   { label: 'Platforms', to: '/platforms', icon: ServerIcon, group: 'Platforms' },
   { label: 'Platform Configuration', to: '/platform-config', icon: SlidersHorizontalIcon, group: 'Platforms' },
@@ -37,22 +42,6 @@ export const navByRole: Record<Role, NavItem[]> = {
   { label: 'Reports', to: '/reports', icon: BarChart3Icon, group: 'System' },
   { label: 'Audit Logs', to: '/audit', icon: ScrollTextIcon, group: 'System' },
   { label: 'Settings', to: '/settings', icon: SettingsIcon, group: 'System' }],
-
-  MANAGER: [
-  { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon, group: 'Overview' },
-  { label: 'Platform Operations', to: '/operations', icon: ActivityIcon, group: 'Overview' },
-  { label: 'Platform Capacity', to: '/capacity', icon: GaugeIcon, group: 'Overview' },
-  { label: 'Roster', to: '/roster', icon: CalendarDaysIcon, group: 'Scheduling' },
-  { label: 'Off-days', to: '/off-days', icon: CalendarOffIcon, group: 'Scheduling' },
-  { label: 'Replacements', to: '/replacements', icon: RefreshCwIcon, group: 'Scheduling' },
-  { label: 'Rotation', to: '/rotation', icon: RepeatIcon, group: 'Scheduling' },
-  { label: 'Employees', to: '/employees', icon: BriefcaseIcon, group: 'Workforce' },
-  { label: 'Freelancers', to: '/freelancers', icon: UserRoundCogIcon, group: 'Workforce' },
-  { label: 'Workstation Pools', to: '/pools', icon: MonitorSmartphoneIcon, group: 'Workstations' },
-  { label: 'Laptops', to: '/laptops', icon: LaptopIcon, group: 'Workstations' },
-  { label: 'Incidents', to: '/incidents', icon: ShieldAlertIcon, group: 'Workstations' },
-  { label: 'Reports', to: '/reports', icon: BarChart3Icon, group: 'System' },
-  { label: 'Notifications', to: '/notifications', icon: BellIcon, group: 'System' }],
 
   EMPLOYEE: [
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon },
@@ -79,15 +68,13 @@ export const navByRole: Record<Role, NavItem[]> = {
 };
 
 export const mobilePrimary: Record<Role, string[]> = {
-  ADMIN: ['/', '/operations', '/replacements', '/pools'],
-  MANAGER: ['/', '/operations', '/replacements', '/pools'],
+  SUPERVISOR: ['/', '/operations', '/replacements', '/pools'],
   EMPLOYEE: ['/', '/my/schedule', '/my/off-days', '/handover'],
   FREELANCER: ['/', '/my/availability', '/my/assignments', '/handover']
 };
 
 export const roleLabels: Record<Role, string> = {
-  ADMIN: 'System Administrator',
-  MANAGER: 'Shift Manager',
+  SUPERVISOR: 'Supervisor',
   EMPLOYEE: 'Permanent Employee',
   FREELANCER: 'Freelancer'
 };

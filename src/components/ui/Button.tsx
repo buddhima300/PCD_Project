@@ -3,7 +3,7 @@ import { Loader2Icon } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'subtle';
-type Size = 'sm' | 'md';
+type Size = 'xs' | 'sm' | 'md';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -21,6 +21,7 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
+  xs: 'h-7 px-2.5 text-xs gap-1 rounded-md',
   sm: 'h-8 px-3 text-xs gap-1.5 rounded-lg',
   md: 'h-10 px-4 text-sm gap-2 rounded-xl'
 };

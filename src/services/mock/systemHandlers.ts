@@ -49,7 +49,7 @@ export interface OpsDashboard {
 
 export interface MyWork {
   role: 'EMPLOYEE' | 'FREELANCER';
-  person: {id: string;name: string;dept: DeptCode;position?: string;priority?: number;};
+  person: {id: string;name: string;dept: DeptCode;position?: string;priority?: number;compatibleCategories?: string[];};
   platform: PlatformSummary | null;
   pool: PoolSummary | null;
   shift: ShiftCode | null;
@@ -80,7 +80,7 @@ export const systemApi = {
 
   getDashboard: (f: DashboardFilters): Promise<OpsDashboard> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const platforms = listPlatformSummaries({ category: f.category, dept: f.dept || undefined }).filter((p) => !f.platform || p.code === f.platform);
     const codes = new Set(platforms.map((p) => p.code));
     const emps = db.employees.filter((e) => codes.has(e.platformCode) && (!f.dept || e.dept === f.dept));
@@ -163,7 +163,7 @@ export const systemApi = {
     const p = current ? db.platforms.find((x) => x.code === current.platformCode)! : null;
     const lap = db.laptops.find((l) => l.nextUserId === f.id || l.currentUserId === f.id) ?? null;
     return {
-      role: 'FREELANCER', person: { id: f.id, name: f.name, dept: f.dept, priority: f.priority }, platform: p ? summarizePlatform(p) : null, pool: p && current ? poolSummary(p, current.dept) : null,
+      role: 'FREELANCER', person: { id: f.id, name: f.name, dept: f.dept, priority: f.priority, compatibleCategories: f.compatibleCategories }, platform: p ? summarizePlatform(p) : null, pool: p && current ? poolSummary(p, current.dept) : null,
       shift: current?.shift ?? null, nextShift: assignments[1]?.shift ?? null, currentWindow: current ? { start: current.shiftStart, end: current.shiftEnd } : null,
       nextWindow: assignments[1] ? { start: assignments[1].shiftStart, end: assignments[1].shiftEnd } : null, workstation: lap, handovers: myHandovers,
       upcomingOffDays: [], offDaysRemaining: 0, offDaysUsed: 0, plannedCover: [], assignments, currentAssignment: current, workloadUsed: fl.workloadUsed, workloadLimit: WORKLOAD_LIMIT,
@@ -196,7 +196,7 @@ export const systemApi = {
 
   listAudit: (q: {page?: number;pageSize?: number;actor?: string;platform?: string;dept?: DeptCode | '';action?: string;entity?: string;from?: string;to?: string;overridesOnly?: boolean;}): Promise<Paged<AuditEntry> & {actions: string[];entities: string[];}> =>
   respond(() => {
-    requireRole('ADMIN');
+    requireRole('SUPERVISOR');
     const list = db.audit.
     filter((x) => textMatch(q.actor, x.actorId, x.actorName)).
     filter((x) => !q.platform || x.platformCode === q.platform).
@@ -211,7 +211,7 @@ export const systemApi = {
 
   getSettings: () =>
   respond(() => {
-    requireRole('ADMIN');
+    requireRole('SUPERVISOR');
     return {
       rules: [
       { key: 'offday.groupLimit', label: 'Max approved off-days per Platform + Department + Date', value: String(OFFDAY_GROUP_LIMIT) },
@@ -238,7 +238,7 @@ export const systemApi = {
     if (!q || q.length < 2) return [];
     const out: {kind: string;id: string;label: string;to: string;}[] = [];
     for (const p of db.platforms) if (textMatch(q, p.code, p.id)) out.push({ kind: 'Platform', id: p.code, label: `${p.code} · ${p.categoryCode}`, to: `/platforms/${p.code}` });
-    if (a.role === 'ADMIN' || a.role === 'MANAGER') {
+    if (a.role === 'SUPERVISOR') {
       for (const e of db.employees) if (textMatch(q, e.id, e.name)) out.push({ kind: 'Employee', id: e.id, label: `${e.name} · ${e.platformCode} / ${e.dept}`, to: `/employees/${e.id}` });
       for (const f of db.freelancers) if (textMatch(q, f.id, f.name)) out.push({ kind: 'Freelancer', id: f.id, label: `${f.name} · ${f.dept}`, to: `/freelancers/${f.id}` });
       for (const l of db.laptops) if (textMatch(q, l.assetId, l.workstationId)) out.push({ kind: 'Laptop', id: l.assetId, label: `${l.workstationId ?? 'Unpooled'} · ${l.status}`, to: `/laptops/${l.assetId}` });

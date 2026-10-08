@@ -1,4 +1,5 @@
-export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'FREELANCER';
+export type Role = 'SUPERVISOR' | 'EMPLOYEE' | 'FREELANCER';
+export type EmploymentType = 'PERMANENT' | 'PART_TIME' | 'EXTERNAL';
 export type DeptCode = 'GS' | 'DP' | 'WD' | 'SAFETY';
 export type ShiftCode = 'MORNING' | 'NIGHT';
 export type EntityStatus = 'ACTIVE' | 'INACTIVE';
@@ -120,6 +121,10 @@ export interface Employee {
   offDaysUsed: number;
   offDaysAllowance: number;
   joinedAt: string;
+  lifecycle?: WorkerLifecycle;
+  positionCode?: string;
+  trainingId?: string;
+  qualifiedForProduction?: boolean;
 }
 
 export type AvailabilityState = 'AVAILABLE' | 'ASSIGNED' | 'UNAVAILABLE' | 'OFF' | 'CONFLICT';
@@ -133,6 +138,7 @@ export interface AvailabilityDay {
 export interface Freelancer {
   uuid: string;
   id: string;
+  employmentType: EmploymentType;
   name: string;
   email: string;
   phone: string;
@@ -141,6 +147,7 @@ export interface Freelancer {
   status: EntityStatus;
   accountStatus: AccountStatus;
   compatibleCategories: string[];
+  compatiblePlatforms?: string[];
   currentAssignmentId: string | null;
   currentPlatform: string | null;
   workloadUsed: number;
@@ -148,6 +155,10 @@ export interface Freelancer {
   todayMorning: AvailabilityState;
   todayNight: AvailabilityState;
   joinedAt: string;
+  lifecycle?: WorkerLifecycle;
+  positionCode?: string;
+  trainingId?: string;
+  qualifiedForProduction?: boolean;
 }
 
 export type OffDayStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'OVERRIDE_APPROVED' | 'CANCELLED';
@@ -478,4 +489,205 @@ export interface Paged<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export type RegistrationStep = 'BASIC_INFO' | 'EMPLOYMENT_TYPE' | 'ROLE_DETAILS' | 'REVIEW';
+
+export interface RegistrationBasicInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface RegistrationForm {
+  basic: RegistrationBasicInfo;
+  employmentType: EmploymentType;
+  employee?: {
+    dept: DeptCode;
+    platformCode: string;
+    position: string;
+    shift: ShiftCode;
+  };
+  freelancer?: {
+    dept: DeptCode;
+    compatibleCategories: string[];
+    workloadLimit: number;
+    priority: number;
+  };
+}
+
+// ----------------- Recruitment, Positions & Platform Training -----------------
+
+export type WorkerLifecycle =
+  | 'CANDIDATE'
+  | 'SELECTED'
+  | 'ONBOARDING'
+  | 'DEPARTMENT_ASSIGNED'
+  | 'PLATFORM_PLACEMENT_REQUIRED'
+  | 'PLATFORM_ASSIGNED'
+  | 'IN_PLATFORM_TRAINING'
+  | 'TRAINING_COMPLETED'
+  | 'PRODUCTION_ACTIVE'
+  | 'PLATFORM_PLACEMENT_PENDING'
+  | 'TRAINING_EXTENDED'
+  | 'TRAINING_FAILED'
+  | 'PRODUCTION_PLACEMENT_BLOCKED'
+  | 'INACTIVE';
+
+export type CandidateStatus =
+  | 'APPLIED'
+  | 'INTERVIEW_SCHEDULED'
+  | 'INTERVIEWED'
+  | 'SELECTED'
+  | 'REJECTED'
+  | 'WAITLISTED'
+  | 'ONBOARDING'
+  | 'PLACED';
+
+export type InterviewResult = 'SELECTED' | 'RECOMMENDED' | 'REJECTED' | 'PENDING';
+
+export interface RecruitCandidate {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  interviewDate: string;
+  interviewResult: InterviewResult;
+  employmentType: 'PERMANENT' | 'FREELANCER';
+  dept: DeptCode;
+  position: string;
+  notes: string;
+  status: CandidateStatus;
+  createdAt: string;
+}
+
+export type PlatformPositionStatus = 'VACANT' | 'RESERVED' | 'TRAINING' | 'ACTIVE' | 'BLOCKED';
+
+export interface PlatformWorkforcePosition {
+  id: string;
+  platformCode: string;
+  categoryCode: string;
+  dept: DeptCode;
+  positionCode: string;
+  slot: number;
+  shift: ShiftCode;
+  status: PlatformPositionStatus;
+  assignedWorkerId: string | null;
+  assignedWorkerName: string | null;
+  assignedWorkerType: 'PERMANENT' | 'FREELANCER' | null;
+  reservedForWorkerId: string | null;
+  workstationId: string | null;
+  updatedAt: string;
+}
+
+export type VacancyType = 'NORMAL' | 'CRITICAL' | 'PLANNED' | 'TEMPORARY' | 'NONE';
+export type ResourceAvailabilityStatus = 'READY' | 'RESOURCE_BLOCKED' | 'FULL';
+export type PlacementPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface PlatformDemand {
+  platformCode: string;
+  categoryCode: string;
+  dept: DeptCode;
+  minHeadcount: number;
+  targetHeadcount: number;
+  maxHeadcount: number;
+  activeHeadcount: number;
+  trainingHeadcount: number;
+  vacancy: number;
+  vacancyType: VacancyType;
+  workstationCapacity: number;
+  availableWorkstations: number;
+  resourceStatus: ResourceAvailabilityStatus;
+  priority: PlacementPriority;
+  operationalDisruption: 'MINIMAL' | 'MODERATE';
+  recommendationRank?: number;
+  recommendationReason?: string;
+}
+
+export type TrainingStatus =
+  | 'TRAINING_ASSIGNED'
+  | 'IN_TRAINING'
+  | 'TRAINING_COMPLETED'
+  | 'TRAINING_EXTENDED'
+  | 'TRAINING_FAILED';
+
+export interface TrainingDayLog {
+  day: number;
+  date: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'SCHEDULED';
+  attendance: 'PRESENT' | 'ABSENT' | 'EXCUSED';
+  notes?: string;
+}
+
+export interface TrainingEvaluation {
+  platformKnowledge: number;
+  departmentKnowledge: number;
+  processAccuracy: number;
+  systemUsage: number;
+  qualityStandards: number;
+  overallScore: number;
+  result: 'PASSED' | 'FAILED' | 'EXTEND';
+  extensionDays?: number;
+  feedback: string;
+  evaluatedBy: string;
+  evaluatedAt: string;
+}
+
+export interface PlatformTrainingAssignment {
+  id: string;
+  workerId: string;
+  workerName: string;
+  workerType: 'PERMANENT' | 'FREELANCER';
+  platformCode: string;
+  categoryCode: string;
+  dept: DeptCode;
+  positionCode: string;
+  shift: ShiftCode;
+  workstationPoolId: string;
+  workstationId: string;
+  laptopAssetId: string;
+  trainingStartDate: string;
+  expectedCompletionDate: string;
+  actualCompletionDate: string | null;
+  requiredTrainingDays: number;
+  completedTrainingDays: number;
+  trainingStatus: TrainingStatus;
+  evaluation: TrainingEvaluation | null;
+  dailyLogs: TrainingDayLog[];
+  assignedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlacementQueueItem {
+  workerId: string;
+  workerName: string;
+  email: string;
+  phone: string;
+  dept: DeptCode;
+  employmentType: 'PERMANENT' | 'FREELANCER';
+  lifecycle: WorkerLifecycle;
+  startDate: string;
+  candidateId?: string;
+  trainingId?: string;
+  assignedPlatform?: string;
+  assignedPosition?: string;
+  recommendedPlatform?: string;
+  eligiblePlatformsCount: number;
+  workstationReady: boolean;
+}
+
+export interface PlacementInput {
+  workerId: string;
+  workerName: string;
+  workerType: 'PERMANENT' | 'FREELANCER';
+  dept: DeptCode;
+  platformCode: string;
+  positionCode: string;
+  shift: ShiftCode;
+  workstationId: string;
+  laptopAssetId: string;
+  trainingDurationDays: number;
+  reason?: string;
 }

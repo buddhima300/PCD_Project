@@ -179,8 +179,8 @@ function build(key: ReportKey, f: ReportFilters): {columns: string[];rows: Row[]
 export const reportApi = {
   getReport: (key: ReportKey, f: ReportFilters): Promise<ReportResult> =>
   respond(() => {
-    const a = requireRole('ADMIN', 'MANAGER');
-    if (key === 'audit-activity' && a.role !== 'ADMIN') requireRole('ADMIN');
+    const a = requireRole('SUPERVISOR');
+    if (key === 'audit-activity' && a.role !== 'SUPERVISOR') requireRole('SUPERVISOR');
     return { ...build(key, f), generatedAt: `${TODAY}T18:52:00` };
   })
 };

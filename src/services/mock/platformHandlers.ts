@@ -72,13 +72,13 @@ export const platformApi = {
 
   getConfigHistory: (code: string): Promise<AuditEntry[]> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     return db.audit.filter((a) => a.platformCode === code && (a.entity === 'PlatformConfig' || a.entity === 'Platform'));
   }),
 
   updatePlatformConfig: (code: string, input: {departments: DeptCapacity;status: EntityStatus;reason: string;}) =>
   respond(() => {
-    const actor = requireRole('ADMIN');
+    const actor = requireRole('SUPERVISOR');
     const p = db.platforms.find((x) => x.code === code);
     if (!p) throw new ApiError('NOT_FOUND', `Platform ${code} does not exist.`, 404);
     if (!input.reason || input.reason.trim().length < 5) throw new ApiError('VALIDATION', 'A change reason of at least 5 characters is required for audit.', 422);
@@ -128,7 +128,7 @@ export const platformApi = {
     for (const d of DEPT_ORDER) if (input.departments[d]) next[d] = input.departments[d];
     p.departments = next;
     p.updatedAt = TODAY;
-    db.notifications.unshift({ id: db.seq.ntf(), type: 'PLATFORM_CONFIG_CHANGED', title: `${code} configuration updated`, body: `${changes.join(', ')} by ${currentAuth().name}.`, createdAt: format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss"), read: false, emailStatus: 'SENT', link: `/platforms/${code}`, recipientRoles: ['ADMIN', 'MANAGER'], recipientId: null });
+    db.notifications.unshift({ id: db.seq.ntf(), type: 'PLATFORM_CONFIG_CHANGED', title: `${code} configuration updated`, body: `${changes.join(', ')} by ${currentAuth().name}.`, createdAt: format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss"), read: false, emailStatus: 'SENT', link: `/platforms/${code}`, recipientRoles: ['SUPERVISOR'], recipientId: null });
     return summarizePlatform(p);
   })
 };

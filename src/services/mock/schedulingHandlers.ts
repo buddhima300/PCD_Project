@@ -72,7 +72,7 @@ export const schedulingApi = {
 
   getDailyRoster: (date: string, q: Omit<RosterQuery, 'month'>): Promise<DailyRosterRow[]> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const offSet = approvedOffSet();
     return filterEmployees(q).
     map((e) => {
@@ -90,7 +90,7 @@ export const schedulingApi = {
 
   getPlatformRoster: (code: string, date: string): Promise<PlatformRoster> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER', 'EMPLOYEE', 'FREELANCER');
+    requireRole('SUPERVISOR', 'EMPLOYEE', 'FREELANCER');
     const p = db.platforms.find((x) => x.code === code);
     if (!p) throw new ApiError('NOT_FOUND', `Platform ${code} does not exist.`, 404);
     const offSet = approvedOffSet();
@@ -152,7 +152,7 @@ export const schedulingApi = {
 
   requestOffDay: (employeeId: string, date: string): Promise<OffDayRequestResult> =>
   respond(() => {
-    const a = requireRole('EMPLOYEE', 'MANAGER', 'ADMIN');
+    const a = requireRole('EMPLOYEE', 'SUPERVISOR');
     if (a.role === 'EMPLOYEE' && a.userId !== employeeId) throw new ApiError('FORBIDDEN', 'You can only request off-days for yourself.', 403);
     const e = db.employees.find((x) => x.id === employeeId);
     if (!e) throw new ApiError('NOT_FOUND', `Employee ${employeeId} does not exist.`, 404);
@@ -189,7 +189,7 @@ export const schedulingApi = {
 
   listOffDayRequests: (q: {status?: string;platform?: string;category?: string;dept?: DeptCode | '';search?: string;month?: string;page?: number;pageSize?: number;}): Promise<Paged<OffDayRequest>> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const list = db.offDays.
     filter((o) => !q.status || o.status === q.status).
     filter((o) => !q.platform || o.platformCode === q.platform).
@@ -203,7 +203,7 @@ export const schedulingApi = {
 
   getOffDayCapacity: (q: {category?: string;platform?: string;dept?: DeptCode | '';start: string;days?: number;onlyAlerts?: boolean;}) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const dates = Array.from({ length: q.days ?? 14 }, (_, i) => plusDays(q.start, i));
     const byGroup = new Map<string, OffDayRequest[]>();
     for (const o of db.offDays) {
@@ -232,7 +232,7 @@ export const schedulingApi = {
 
   overrideOffDay: (requestId: string, reason: string) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     const o = db.offDays.find((x) => x.id === requestId);
     if (!o) throw new ApiError('NOT_FOUND', 'Off-day request not found.', 404);
     if (o.status !== 'REJECTED') throw new ApiError('INVALID_STATE', 'Only rejected requests can be overridden.', 409);

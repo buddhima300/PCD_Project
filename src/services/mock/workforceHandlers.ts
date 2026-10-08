@@ -53,7 +53,7 @@ export interface FreelancerDetail {
 export const workforceApi = {
   listEmployees: (q: EmployeeQuery): Promise<Paged<Employee>> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const list = db.employees.
     filter((e) => !q.category || e.categoryCode === q.category).
     filter((e) => !q.platform || e.platformCode === q.platform).
@@ -95,13 +95,13 @@ export const workforceApi = {
       handovers: db.handovers.filter((h) => h.outgoingId === id || h.incomingId === id).sort((x, y) => y.scheduledAt.localeCompare(x.scheduledAt)),
       platformHistory,
       scheduleHistory,
-      audit: a.role === 'ADMIN' || a.role === 'MANAGER' ? db.audit.filter((x) => x.entityId === id || x.actorId === id) : []
+      audit: a.role === 'SUPERVISOR' ? db.audit.filter((x) => x.entityId === id || x.actorId === id) : []
     };
   }),
 
   listFreelancers: (q: FreelancerQuery): Promise<Paged<Freelancer>> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const list = db.freelancers.
     filter((f) => !q.dept || f.dept === q.dept).
     filter((f) => !q.status || f.status === q.status).
@@ -135,7 +135,7 @@ export const workforceApi = {
 
   getAvailabilityBoard: (dept: DeptCode, start: string, days = 14) =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const dates = Array.from({ length: days }, (_, i) => plusDays(start, i));
     return {
       dates,
@@ -167,7 +167,7 @@ export const workforceApi = {
 
   updatePriority: (dept: DeptCode, orderedIds: string[], reason: string) =>
   respond(() => {
-    const actor = requireRole('ADMIN', 'MANAGER');
+    const actor = requireRole('SUPERVISOR');
     if (!reason || reason.trim().length < 5) throw new ApiError('VALIDATION', 'Provide a reason (min 5 characters) for the priority change.', 422);
     const list = db.freelancers.filter((f) => f.dept === dept);
     if (orderedIds.length !== list.length || !list.every((f) => orderedIds.includes(f.id))) throw new ApiError('VALIDATION', 'Priority list must include every freelancer in the department exactly once.', 422);
@@ -182,7 +182,7 @@ export const workforceApi = {
 
   getPriorityHistory: (dept: DeptCode): Promise<AuditEntry[]> =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     return db.audit.filter((x) => x.entity === 'FreelancerPriority' && x.dept === dept);
   }),
 
@@ -237,7 +237,7 @@ export const workforceApi = {
 
   getWorkforceOverview: () =>
   respond(() => {
-    requireRole('ADMIN', 'MANAGER');
+    requireRole('SUPERVISOR');
     const byCategory = db.categories.map((c) => ({
       code: c.code,
       employees: db.employees.filter((e) => e.categoryCode === c.code).length,

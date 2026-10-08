@@ -22,7 +22,7 @@ const EMPTY: ChecklistResult = { laptopCondition: 'GOOD', chargerPresent: true, 
 
 export function Handover() {
   const role = useSessionStore((s) => s.user?.role);
-  return role === 'ADMIN' || role === 'MANAGER' ? <OpsHandovers /> : <MyHandovers />;
+  return role === 'SUPERVISOR' ? <OpsHandovers /> : <MyHandovers />;
 }
 
 function OpsHandovers() {
