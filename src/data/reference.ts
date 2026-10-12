@@ -67,6 +67,7 @@ export const shiftDefinitions: ShiftDefinition[] = [
 
 export const demoUsers: SessionUser[] = [
 { id: 'USR-SUP-001', role: 'SUPERVISOR', name: 'Leila Haddad', title: 'Supervisor', email: 'leila.haddad@relayops.com' },
+{ id: 'USR-MGR-014', role: 'SUPERVISOR', name: 'Daniel Mwangi', title: 'Senior Approver', email: 'daniel.mwangi@relayops.com' },
 { id: 'EMP-00421', role: 'EMPLOYEE', name: 'Arjun Mehta', title: 'Deposit Agent', email: 'arjun.mehta@relayops.com' },
 { id: 'FL-00124', role: 'FREELANCER', name: 'Sofia Reyes', title: 'Freelancer · Deposits', email: 'sofia.reyes@relayops.com' }];
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellIcon, MailIcon } from 'lucide-react';
@@ -13,7 +13,7 @@ import type { NotificationItem } from '../../types/domain';
 import { cn } from '../../utils/cn';
 import { fmtDateTime, relative } from '../../utils/format';
 
-const TYPES = ['OFFDAY_APPROVED', 'OFFDAY_REJECTED', 'OFFDAY_OVERRIDE', 'SHIFT_CHANGED', 'ROTATION', 'REPLACEMENT_ASSIGNED', 'EMERGENCY_REPLACEMENT', 'PLATFORM_ASSIGNMENT', 'WORKSTATION_ASSIGNED', 'HANDOVER_REQUIRED', 'LAPTOP_INCIDENT', 'ROSTER_UPDATED', 'PLATFORM_CONFIG_CHANGED'];
+const TYPES = ['OFFDAY_APPROVED', 'OFFDAY_REJECTED', 'OFFDAY_OVERRIDE', 'SHIFT_CHANGED', 'ROTATION', 'REPLACEMENT_ASSIGNED', 'EMERGENCY_REPLACEMENT', 'PLATFORM_ASSIGNMENT', 'WORKSTATION_ASSIGNED', 'HANDOVER_REQUIRED', 'LAPTOP_INCIDENT', 'DISCIPLINARY_CASE', 'ROSTER_UPDATED', 'PLATFORM_CONFIG_CHANGED'];
 
 export function Notifications() {
   const qc = useQueryClient();

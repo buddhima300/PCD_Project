@@ -54,6 +54,8 @@ const AuditLog = named(() => import('./pages/system/AuditLog'), 'AuditLog');
 const Settings = named(() => import('./pages/system/Settings'), 'Settings');
 const Profile = named(() => import('./pages/system/Profile'), 'Profile');
 const NotFound = named(() => import('./pages/system/NotFound'), 'NotFound');
+const DisciplinaryManagement = named(() => import('./pages/disciplinary/DisciplinaryManagement'), 'DisciplinaryManagement');
+const MyDisciplinaryRecords = named(() => import('./pages/disciplinary/MyDisciplinaryRecords'), 'MyDisciplinaryRecords');
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,6 +106,8 @@ export function App() {
             <Route path="laptops" element={g(SUP, <Laptops />)} />
             <Route path="laptops/:assetId" element={g(SUP, <LaptopDetail />)} />
             <Route path="incidents" element={g(SUP, <Incidents />)} />
+            <Route path="disciplinary" element={g(SUP, <DisciplinaryManagement />)} />
+            <Route path="my/disciplinary" element={g(STAFF, <MyDisciplinaryRecords />)} />
             <Route path="reports" element={g(SUP, <Reports />)} />
             <Route path="audit" element={g(SUP, <AuditLog />)} />
             <Route path="settings" element={g(SUP, <Settings />)} />

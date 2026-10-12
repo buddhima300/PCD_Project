@@ -38,6 +38,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   { label: 'Workstation Pools', to: '/pools', icon: MonitorSmartphoneIcon, group: 'Workstations' },
   { label: 'Laptops', to: '/laptops', icon: LaptopIcon, group: 'Workstations' },
   { label: 'Incidents', to: '/incidents', icon: ShieldAlertIcon, group: 'Workstations' },
+  { label: 'Incident & Disciplinary', to: '/disciplinary', icon: ShieldAlertIcon, group: 'People & Conduct' },
   { label: 'Notifications', to: '/notifications', icon: BellIcon, group: 'System' },
   { label: 'Reports', to: '/reports', icon: BarChart3Icon, group: 'System' },
   { label: 'Audit Logs', to: '/audit', icon: ScrollTextIcon, group: 'System' },
@@ -51,6 +52,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   { label: 'My Workstation', to: '/my/workstation', icon: LaptopIcon },
   { label: 'Handover', to: '/handover', icon: ArrowLeftRightIcon },
   { label: 'Report Issue', to: '/report-issue', icon: TriangleAlertIcon },
+  { label: 'My IRs & Warning Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
   { label: 'Notifications', to: '/notifications', icon: BellIcon },
   { label: 'Profile', to: '/profile', icon: UserCircleIcon }],
 
@@ -62,6 +64,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   { label: 'My Workstation', to: '/my/workstation', icon: LaptopIcon },
   { label: 'Handover', to: '/handover', icon: ArrowLeftRightIcon },
   { label: 'Report Issue', to: '/report-issue', icon: TriangleAlertIcon },
+  { label: 'My IRs & Warning Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
   { label: 'Notifications', to: '/notifications', icon: BellIcon },
   { label: 'Profile', to: '/profile', icon: UserCircleIcon }]
 
