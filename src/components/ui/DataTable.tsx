@@ -29,7 +29,7 @@ export function DataTable<T>({ columns, rows, rowKey, sort, onSort, onRowClick, 
       <table className="w-full min-w-max border-collapse text-left text-[13px]">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead className={cn(stickyHeader && 'sticky top-0 z-10')}>
-          <tr className="border-b border-line bg-mist/70">
+          <tr className="border-b border-line bg-primary-50/55">
             {columns.map((c) => {
               const active = sort?.key === c.key;
               return (

@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronsLeftIcon, ChevronsRightIcon, WaypointsIcon } from 'lucide-react';
 import { navByRole } from '../../data/navigation';
@@ -6,11 +5,13 @@ import { useSessionStore } from '../../hooks/useSessionStore';
 import { useUiStore } from '../../hooks/useUiStore';
 import { cn } from '../../utils/cn';
 import { ShiftClock } from './ShiftClock';
+import { useBreakSnapshot } from '../../features/break-management/hooks';
 
 export function Sidebar() {
   const user = useSessionStore((s) => s.user)!;
   const { sidebarCollapsed: collapsed, toggleSidebar } = useUiStore();
-  const items = navByRole[user.role];
+  const breaks = useBreakSnapshot();
+  const items = navByRole[user.role].filter(i => !i.to.endsWith('/breaks') || (breaks.data?.capabilities.view && (user.role !== 'SUPERVISOR' || breaks.data.capabilities.monitor)));
   const groups = items.reduce<Record<string, typeof items>>((acc, it) => {
     const g = it.group ?? '';
     (acc[g] ??= []).push(it);
@@ -21,13 +22,13 @@ export function Sidebar() {
     <aside
       aria-label="Primary"
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line bg-surface md:flex',
+        'app-glass-bar sticky top-0 hidden h-screen shrink-0 flex-col border-r md:flex',
         'transition-[width] duration-200 ease-out',
         collapsed ? 'w-[72px]' : 'w-[72px] lg:w-64'
       )}>
       
       <div className={cn('flex items-center gap-2.5 px-4 pb-3 pt-4', collapsed && 'justify-center px-0')}>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+        <span className="app-primary-action flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-white">
           <WaypointsIcon className="h-5 w-5" aria-hidden />
         </span>
         <div className={cn('min-w-0', collapsed ? 'hidden' : 'hidden lg:block')}>
@@ -36,7 +37,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className={cn('mx-3 mb-2 rounded-xl bg-primary px-3.5 py-3 text-white', collapsed ? 'hidden' : 'hidden lg:block')}>
+      <div className={cn('app-primary-action mx-3 mb-2 rounded-2xl px-3.5 py-3 text-white', collapsed ? 'hidden' : 'hidden lg:block')}>
         <p className="text-sm font-semibold">Q3 2026 rotation cycle</p>
         <p className="mt-0.5 text-xs text-primary-100">Jul 01 → Sep 30 · swap on Oct 01</p>
       </div>

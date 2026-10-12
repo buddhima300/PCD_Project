@@ -17,7 +17,7 @@ export function PlatformRosterView({ code, date, linkPeople = true }: {code: str
       {(r) =>
       <div className="grid gap-4 lg:grid-cols-2">
           {r.depts.map((d) =>
-        <div key={d.dept} className="rounded-2xl border border-line bg-surface">
+        <div key={d.dept} className="app-panel rounded-3xl border border-white/90 bg-white/80 backdrop-blur-xl">
               <div className="flex items-center justify-between border-b border-line px-4 py-3">
                 <p className="text-sm font-semibold">
                   {d.dept} <span className="font-normal text-ink-muted">· {deptNames[d.dept]}</span>

@@ -31,7 +31,7 @@ export function PageHeader({ title, description, actions, breadcrumbs, meta }: P
           </nav>
         }
         <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="text-xl font-semibold tracking-tight text-ink md:text-[22px]">{title}</h1>
+          <h1 className="text-[21px] font-semibold tracking-tight text-ink md:text-2xl">{title}</h1>
           {meta}
         </div>
         {description && <p className="mt-1 max-w-3xl text-sm text-ink-muted">{description}</p>}

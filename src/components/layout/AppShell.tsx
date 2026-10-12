@@ -10,7 +10,7 @@ export function AppShell() {
   const user = useSessionStore((s) => s.user);
   if (!user) return <Navigate to="/login" replace />;
   return (
-    <div className="flex min-h-screen w-full bg-canvas">
+    <div className="app-shell-canvas flex min-h-screen w-full">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop">
         Skip to content
       </a>

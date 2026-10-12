@@ -29,7 +29,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', classN
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         placeholder={placeholder}
-        className="h-9 w-full rounded-xl border border-line bg-surface pl-9 pr-8 text-[13px] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
+        className="app-input h-9 w-full rounded-2xl border pl-9 pr-8 text-[13px] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20" />
       
       {local &&
       <button onClick={() => setLocal('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-subtle hover:text-ink" aria-label="Clear search">

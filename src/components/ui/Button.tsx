@@ -13,17 +13,17 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-primary text-white hover:bg-primary-700 disabled:bg-primary-200',
-  secondary: 'bg-surface text-ink border border-line hover:bg-mist hover:border-line-strong disabled:text-ink-subtle',
+  primary: 'app-primary-action text-white hover:bg-primary-700 disabled:bg-primary-200',
+  secondary: 'app-raised-control border bg-surface text-ink hover:bg-mist hover:border-line-strong disabled:text-ink-subtle',
   ghost: 'text-ink-muted hover:bg-mist hover:text-ink',
   danger: 'bg-danger text-white hover:bg-danger-600 disabled:bg-danger-100',
   subtle: 'bg-primary-50 text-primary-700 hover:bg-primary-100'
 };
 
 const sizes: Record<Size, string> = {
-  xs: 'h-7 px-2.5 text-xs gap-1 rounded-md',
-  sm: 'h-8 px-3 text-xs gap-1.5 rounded-lg',
-  md: 'h-10 px-4 text-sm gap-2 rounded-xl'
+  xs: 'h-7 px-2.5 text-xs gap-1 rounded-lg',
+  sm: 'h-8 px-3 text-xs gap-1.5 rounded-xl',
+  md: 'h-10 px-4 text-sm gap-2 rounded-2xl'
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(

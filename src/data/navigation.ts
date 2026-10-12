@@ -15,6 +15,7 @@ export interface NavItem {
 
 export const navByRole: Record<Role, NavItem[]> = {
   SUPERVISOR: [
+  { label: 'Break Management', to: '/breaks', icon: Clock3Icon, group: 'Scheduling' },
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon, group: 'Overview' },
   { label: 'Platform Operations', to: '/operations', icon: ActivityIcon, group: 'Overview' },
   { label: 'Candidates', to: '/candidates', icon: UserCheckIcon, group: 'Recruitment' },
@@ -45,6 +46,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   { label: 'Settings', to: '/settings', icon: SettingsIcon, group: 'System' }],
 
   EMPLOYEE: [
+  { label: 'Break Management', to: '/my/breaks', icon: Clock3Icon },
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon },
   { label: 'My Platform', to: '/my/platform', icon: ServerIcon },
   { label: 'My Schedule', to: '/my/schedule', icon: CalendarDaysIcon },
@@ -57,6 +59,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   { label: 'Profile', to: '/profile', icon: UserCircleIcon }],
 
   FREELANCER: [
+  { label: 'Break Management', to: '/my/breaks', icon: Clock3Icon },
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon },
   { label: 'Availability', to: '/my/availability', icon: CalendarCheckIcon },
   { label: 'Assignments', to: '/my/assignments', icon: ClipboardListIcon },

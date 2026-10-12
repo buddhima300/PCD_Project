@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useId, useRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { XIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -15,17 +15,21 @@ interface DialogProps {
 
 export function Dialog({ open, onClose, title, description, children, footer, size = 'md' }: DialogProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const reducedMotion = useReducedMotion();
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     const t = setTimeout(() => {
-      const el = ref.current?.querySelector<HTMLElement>('input, select, textarea, button:not([data-close])');
+      const el = ref.current?.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([data-close])');
       el?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeRef.current();
       if (e.key === 'Tab' && ref.current) {
-        const f = ref.current.querySelectorAll<HTMLElement>('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        const f = ref.current.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)');
         if (!f.length) return;
         const first = f[0];
         const last = f[f.length - 1];
@@ -44,7 +48,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
       document.removeEventListener('keydown', onKey);
       prev?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return (
     <AnimatePresence>
@@ -55,26 +59,26 @@ export function Dialog({ open, onClose, title, description, children, footer, si
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: reducedMotion ? 0 : 0.2 }}
           onClick={onClose} />
         
           <motion.div
           ref={ref}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="dialog-title"
+          aria-labelledby={titleId}
           initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
-          transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+          transition={{ duration: reducedMotion ? 0 : 0.22, ease: [0.23, 1, 0.32, 1] }}
           className={cn(
-            'relative flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-surface shadow-pop sm:rounded-2xl',
+            'app-panel relative flex max-h-[92vh] w-full flex-col rounded-t-2xl border border-white/90 bg-surface shadow-pop sm:rounded-2xl',
             size === 'sm' ? 'sm:max-w-md' : size === 'md' ? 'sm:max-w-lg' : 'sm:max-w-3xl'
           )}>
           
             <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
               <div>
-                <h2 id="dialog-title" className="text-base font-semibold text-ink">
+                <h2 id={titleId} className="text-base font-semibold text-ink">
                   {title}
                 </h2>
                 {description && <p className="mt-0.5 text-sm text-ink-muted">{description}</p>}

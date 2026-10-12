@@ -19,7 +19,7 @@ export function PlatformCard({ platform: p, mode = 'live' }: PlatformCardProps) 
     <Link
       to={`/platforms/${p.code}`}
       className={cn(
-        'flex h-full flex-col rounded-2xl border bg-surface p-4 transition-[box-shadow,border-color] duration-150 hover:border-primary-200 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+        'app-panel flex h-full flex-col rounded-3xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl transition-[box-shadow,border-color] duration-150 hover:border-primary-200 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
         p.opStatus === 'INCIDENT' ? 'border-danger-100' : p.opStatus === 'WARNING' ? 'border-warning-100' : 'border-line',
         p.status !== 'ACTIVE' && 'opacity-70'
       )}>

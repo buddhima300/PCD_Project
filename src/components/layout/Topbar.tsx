@@ -43,7 +43,7 @@ function GlobalSearch() {
         onFocus={() => setOpen(true)}
         placeholder="Search platforms, employees, freelancers, laptops…"
         aria-label="Global search"
-        className="h-10 w-full rounded-xl border border-line bg-canvas pl-9 pr-3 text-[13px] placeholder:text-ink-subtle focus:border-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20" />
+        className="app-input h-10 w-full rounded-2xl border pl-9 pr-3 text-[13px] placeholder:text-ink-subtle focus:border-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20" />
       
       <AnimatePresence>
         {open && dq.length >= 2 &&
@@ -97,9 +97,9 @@ export function Topbar() {
   const unread = notif.data?.unread ?? 0;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur md:px-6">
+    <header className="app-glass-bar sticky top-0 z-30 flex h-16 items-center gap-3 border-b px-4 backdrop-blur md:px-6">
       <Link to="/" className="flex items-center gap-2 md:hidden" aria-label="Relay WFM home">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+          <span className="app-primary-action flex h-8 w-8 items-center justify-center rounded-xl text-white">
           <WaypointsIcon className="h-4 w-4" />
         </span>
         <span className="text-sm font-semibold">Relay WFM</span>

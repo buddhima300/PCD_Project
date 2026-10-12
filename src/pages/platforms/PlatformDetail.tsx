@@ -241,7 +241,7 @@ export function PlatformDetail() {
       <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {pools.map((pl) =>
-          <Link key={pl.id} to={`/pools/${pl.id}`} className="rounded-2xl border border-line bg-surface p-4 hover:border-primary-200">
+          <Link key={pl.id} to={`/pools/${pl.id}`} className="app-panel rounded-3xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl hover:border-primary-200">
                 <p className="text-sm font-semibold">{pl.platformCode} / {pl.dept}</p>
                 <div className="mt-2"><CapacityMeter used={pl.occupied} capacity={pl.capacity} pending={pl.handoverPending} /></div>
                 <p className="mt-2 text-xs text-ink-muted">{pl.available} available · {pl.handoverPending} handover · {pl.incidents} incidents</p>

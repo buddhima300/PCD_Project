@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '../../utils/cn';
 
 export function Card({ className, children, as: As = 'section' }: {className?: string;children: React.ReactNode;as?: 'section' | 'div' | 'article';}) {
-  return <As className={cn('rounded-2xl border border-line bg-surface shadow-card', className)}>{children}</As>;
+  return <As className={cn('app-panel rounded-3xl border border-white/95 bg-white/80 shadow-card backdrop-blur-xl', className)}>{children}</As>;
 }
 
 interface CardHeaderProps {

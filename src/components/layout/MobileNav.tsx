@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MenuIcon, XIcon } from 'lucide-react';
@@ -6,16 +5,18 @@ import { mobilePrimary, navByRole } from '../../data/navigation';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { useUiStore } from '../../hooks/useUiStore';
 import { cn } from '../../utils/cn';
+import { useBreakSnapshot } from '../../features/break-management/hooks';
 
 export function MobileNav() {
   const user = useSessionStore((s) => s.user)!;
   const { moreOpen, setMoreOpen } = useUiStore();
-  const items = navByRole[user.role];
+  const breaks = useBreakSnapshot();
+  const items = navByRole[user.role].filter(i => !i.to.endsWith('/breaks') || (breaks.data?.capabilities.view && (user.role !== 'SUPERVISOR' || breaks.data.capabilities.monitor)));
   const primary = mobilePrimary[user.role].map((to) => items.find((i) => i.to === to)!).filter(Boolean);
 
   return (
     <>
-      <nav aria-label="Mobile" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Mobile" className="app-glass-bar fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] md:hidden">
         {primary.map((it) =>
         <NavLink
           key={it.to}

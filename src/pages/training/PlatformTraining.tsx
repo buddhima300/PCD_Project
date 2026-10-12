@@ -111,22 +111,22 @@ export function PlatformTraining() {
 
       {/* KPI Counters */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-xl border border-line bg-surface p-4">
+        <div className="app-panel rounded-2xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-ink-subtle">Total on-platform trainees</p>
           <p className="mt-1 text-2xl font-bold text-ink tabular">{trainings.length}</p>
           <p className="mt-1 text-[11px] text-ink-muted">Assigned directly to production platforms</p>
         </div>
-        <div className="rounded-xl border border-primary-200 bg-primary-50/50 p-4">
+        <div className="app-panel rounded-2xl border border-primary-200 bg-primary-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-primary-800">Currently in training</p>
           <p className="mt-1 text-2xl font-bold text-primary-900 tabular">{inTrainingCount}</p>
           <p className="mt-1 text-[11px] text-primary-700">Occupying platform capacity</p>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+        <div className="app-panel rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-emerald-800">Graduated to production</p>
           <p className="mt-1 text-2xl font-bold text-emerald-900 tabular">{completedCount}</p>
           <p className="mt-1 text-[11px] text-emerald-700">Active permanent members on platform</p>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+        <div className="app-panel rounded-2xl border border-amber-200 bg-amber-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-amber-800">Extended qualification</p>
           <p className="mt-1 text-2xl font-bold text-amber-900 tabular">{extendedCount}</p>
           <p className="mt-1 text-[11px] text-amber-700">Reinforcement days on same platform</p>

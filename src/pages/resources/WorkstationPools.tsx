@@ -33,7 +33,7 @@ export function WorkstationPools() {
         view === 'grid' ?
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {pools.map((p) =>
-          <Link key={p.id} to={`/pools/${p.id}`} className={cn('flex flex-col rounded-2xl border border-line bg-surface p-4 transition-[border-color,box-shadow] duration-150 hover:border-primary-200 hover:shadow-pop', p.platformStatus !== 'ACTIVE' && 'opacity-60')}>
+          <Link key={p.id} to={`/pools/${p.id}`} className={cn('app-panel flex flex-col rounded-3xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl transition-[border-color,box-shadow] duration-150 hover:border-primary-200 hover:shadow-pop', p.platformStatus !== 'ACTIVE' && 'opacity-60')}>
                   <div className="flex items-baseline justify-between">
                     <p className="text-sm font-semibold">{p.platformCode} / {p.dept}</p>
                     <span className="text-[11px] text-ink-subtle">{p.capacity} seats</span>

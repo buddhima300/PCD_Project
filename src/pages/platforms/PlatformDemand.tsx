@@ -65,22 +65,22 @@ export function PlatformDemand() {
 
       {/* Summary KPI Counters */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-xl border border-line bg-surface p-4">
+        <div className="app-panel rounded-2xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-ink-subtle">Total platform vacancies</p>
           <p className="mt-1 text-2xl font-bold text-ink tabular">{totalVacancies}</p>
           <p className="mt-1 text-[11px] text-ink-muted">Across operational platforms</p>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+        <div className="app-panel rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-emerald-800">Ready for recruit placement</p>
           <p className="mt-1 text-2xl font-bold text-emerald-900 tabular">{readyVacancies}</p>
           <p className="mt-1 text-[11px] text-emerald-700">Vacancy + Workstations available</p>
         </div>
-        <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+        <div className="app-panel rounded-2xl border border-rose-200 bg-rose-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-rose-800">Resource blocked</p>
           <p className="mt-1 text-2xl font-bold text-rose-900 tabular">{blockedVacancies}</p>
           <p className="mt-1 text-[11px] text-rose-700">Vacancy exists but 0 laptops</p>
         </div>
-        <div className="rounded-xl border border-line bg-surface p-4">
+        <div className="app-panel rounded-2xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-ink-subtle">Active on-platform trainees</p>
           <p className="mt-1 text-2xl font-bold text-primary-700 tabular">
             {demands.reduce((acc, d) => acc + d.trainingHeadcount, 0)}

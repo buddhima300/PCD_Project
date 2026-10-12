@@ -3,14 +3,14 @@ import { ChevronDownIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const base =
-'w-full rounded-xl border border-line bg-surface text-sm text-ink placeholder:text-ink-subtle transition-[border-color,box-shadow] duration-150 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-mist disabled:text-ink-subtle';
+'app-input w-full rounded-2xl border text-sm text-ink placeholder:text-ink-subtle transition-[border-color,box-shadow] duration-150 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-mist disabled:text-ink-subtle';
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...rest }, ref) {
-  return <input ref={ref} className={cn(base, 'h-10 px-3', className)} {...rest} />;
+  return <input ref={ref} className={cn(base, 'h-10 px-3.5', className)} {...rest} />;
 });
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...rest }, ref) {
-  return <textarea ref={ref} className={cn(base, 'min-h-[88px] px-3 py-2', className)} {...rest} />;
+  return <textarea ref={ref} className={cn(base, 'min-h-[88px] px-3.5 py-2.5', className)} {...rest} />;
 });
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -22,7 +22,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function Select({ options, placeholder, className, compact, ...rest }, ref) {
   return (
     <div className={cn('relative', className)}>
-      <select ref={ref} className={cn(base, 'appearance-none pl-3 pr-8', compact ? 'h-9 text-[13px]' : 'h-10')} {...rest}>
+      <select ref={ref} className={cn(base, 'appearance-none pl-3.5 pr-8', compact ? 'h-9 text-[13px]' : 'h-10')} {...rest}>
         {placeholder !== undefined && <option value="">{placeholder}</option>}
         {options.map((o) =>
         <option key={o.value} value={o.value}>
