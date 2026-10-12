@@ -29,7 +29,7 @@ export function KpiTile({
   to,
   emphasis
 }: KpiTileProps) {
-  const body = <div className={cn('flex h-full items-start justify-between gap-3 rounded-2xl border p-4 backdrop-blur-xl', emphasis ? `${tint[tone]} app-panel app-raised-control` : 'app-panel border-white/95 bg-white/80')}>
+  const body = <div data-kpi-tone={tone} className={cn('flex h-full items-start justify-between gap-3 rounded-2xl border p-4 backdrop-blur-xl', emphasis ? `${tint[tone]} app-panel app-raised-control` : 'app-panel border-white/95 bg-white/80')}>
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-ink-muted">{label}</p>
         <p className="mt-1.5 text-2xl font-semibold tracking-tight text-ink tabular">{value}</p>

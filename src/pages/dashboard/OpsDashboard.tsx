@@ -5,7 +5,7 @@ import {
   ArrowLeftRightIcon, ArrowRightIcon, CalendarOffIcon, GaugeIcon, GraduationCapIcon, MoonIcon, RefreshCwIcon, RepeatIcon,
   ServerIcon, ShieldAlertIcon, SparklesIcon, SunIcon, UserCheckIcon, UsersIcon } from
 'lucide-react';
-import { PlatformCard } from '../../components/platform/PlatformCard';
+import { PlatformTable } from '../../components/platform/PlatformTable';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { KpiTile } from '../../components/ui/KpiTile';
@@ -296,11 +296,7 @@ export function OpsDashboard() {
                     </Link>
                 } />
               
-                <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                  {platforms.slice(0, 8).map((p) =>
-                <PlatformCard key={p.code} platform={p} />
-                )}
-                </div>
+                <div className="mt-3"><PlatformTable rows={platforms.slice(0, 8)} /></div>
               </Card>
 
               <div className="grid gap-4 xl:grid-cols-3">

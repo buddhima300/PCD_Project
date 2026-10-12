@@ -39,7 +39,7 @@ export function respond<T>(fn: () => T): Promise<T> {
     const delay = mockConfig.latencyMs * (0.6 + Math.random() * 0.8);
     setTimeout(() => {
       if (mockConfig.simulateNetworkFailure) {
-        reject(new ApiError('NETWORK_FAILURE', 'Unable to reach the Relay operations API. Check your connection and retry.', 0));
+        reject(new ApiError('NETWORK_FAILURE', 'Unable to reach the PortCity Digital operations API. Check your connection and retry.', 0));
         return;
       }
       try {

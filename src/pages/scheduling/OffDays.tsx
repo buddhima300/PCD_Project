@@ -11,7 +11,8 @@ import { Dialog } from '../../components/ui/Dialog';
 import { Checkbox, Field, Input, Select, Textarea } from '../../components/ui/Field';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Pagination } from '../../components/ui/Pagination';
-import { ScopeFilters, type Scope } from '../../components/ui/ScopeFilters';
+import { ScopeFilters } from '../../components/ui/ScopeFilters';
+import { useUrlScope } from '../../hooks/useUrlScope';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { QueryView } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -28,7 +29,7 @@ export function OffDays() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') as Tab ?? 'review';
   const qc = useQueryClient();
-  const [scope, setScope] = useState<Scope>({ category: '', platform: '', dept: '' });
+  const [scope, setScope] = useUrlScope();
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -51,7 +52,7 @@ export function OffDays() {
   return (
     <div>
       <PageHeader title="Off-days" description="Requests are auto-processed first-come-first-served against a limit of 2 approved per platform + department + date. Overrides are exceptions and always audited." />
-      <Tabs className="mb-4" value={tab} onChange={(t) => setParams({ tab: t })} tabs={[{ id: 'review', label: 'Request review' }, { id: 'capacity', label: 'Platform off-day capacity' }]} />
+      <Tabs className="mb-4" value={tab} onChange={(t) => setParams(previous => { const next = new URLSearchParams(previous); next.set('tab', t); return next; })} tabs={[{ id: 'review', label: 'Request review' }, { id: 'capacity', label: 'Platform off-day capacity' }]} />
       {tab === 'review' ?
       <Card>
           <div className="flex flex-wrap gap-2 border-b border-line p-3">

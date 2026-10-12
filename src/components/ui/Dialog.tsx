@@ -11,9 +11,10 @@ interface DialogProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  placement?: 'center' | 'right';
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, size = 'md' }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, size = 'md', placement = 'center' }: DialogProps) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const reducedMotion = useReducedMotion();
@@ -23,7 +24,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     const t = setTimeout(() => {
-      const el = ref.current?.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([data-close])');
+      const el = ref.current?.querySelector<HTMLElement>('a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([data-close])');
       el?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
@@ -53,7 +54,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   return (
     <AnimatePresence>
       {open &&
-      <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+      <div className={cn('fixed inset-0 z-50 flex', placement === 'right' ? 'items-stretch justify-end' : 'items-end justify-center p-0 sm:items-center sm:p-4')}>
           <motion.div
           className="absolute inset-0 bg-ink/40"
           initial={{ opacity: 0 }}
@@ -73,7 +74,8 @@ export function Dialog({ open, onClose, title, description, children, footer, si
           transition={{ duration: reducedMotion ? 0 : 0.22, ease: [0.23, 1, 0.32, 1] }}
           className={cn(
             'app-panel relative flex max-h-[92vh] w-full flex-col rounded-t-2xl border border-white/90 bg-surface shadow-pop sm:rounded-2xl',
-            size === 'sm' ? 'sm:max-w-md' : size === 'md' ? 'sm:max-w-lg' : 'sm:max-w-3xl'
+            size === 'sm' ? 'sm:max-w-md' : size === 'md' ? 'sm:max-w-lg' : 'sm:max-w-3xl',
+            placement === 'right' && 'equipment-detail-panel !max-h-screen !rounded-none'
           )}>
           
             <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">

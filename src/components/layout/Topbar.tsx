@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BellIcon, ChevronDownIcon, LogOutIcon, SearchIcon, UserCircleIcon, UsersIcon, WaypointsIcon } from 'lucide-react';
+import { BellIcon, ChevronDownIcon, LogOutIcon, SearchIcon, UserCircleIcon, UsersIcon } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { demoUsers } from '../../data/reference';
 import { roleLabels } from '../../data/navigation';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -98,11 +99,9 @@ export function Topbar() {
 
   return (
     <header className="app-glass-bar sticky top-0 z-30 flex h-16 items-center gap-3 border-b px-4 backdrop-blur md:px-6">
-      <Link to="/" className="flex items-center gap-2 md:hidden" aria-label="Relay WFM home">
-          <span className="app-primary-action flex h-8 w-8 items-center justify-center rounded-xl text-white">
-          <WaypointsIcon className="h-4 w-4" />
-        </span>
-        <span className="text-sm font-semibold">Relay WFM</span>
+      <Link to="/" className="flex items-center gap-2 md:hidden" aria-label="PortCity Digital home">
+        <BrandLogo compact />
+        <span className="text-sm font-semibold">PortCity Digital</span>
       </Link>
       <div className="hidden flex-1 md:block">
         <GlobalSearch />

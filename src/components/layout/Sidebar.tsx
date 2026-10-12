@@ -1,17 +1,22 @@
-import { NavLink } from 'react-router-dom';
-import { ChevronsLeftIcon, ChevronsRightIcon, WaypointsIcon } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { ChevronsLeftIcon, ChevronsRightIcon } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { navByRole } from '../../data/navigation';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { useUiStore } from '../../hooks/useUiStore';
 import { cn } from '../../utils/cn';
 import { ShiftClock } from './ShiftClock';
 import { useBreakSnapshot } from '../../features/break-management/hooks';
+import { matchesDestination, supervisorAreaFor, visibleNavigation } from '../../data/supervisorNavigation';
 
 export function Sidebar() {
-  const user = useSessionStore((s) => s.user)!;
+  const user = useSessionStore((s) => s.user);
   const { sidebarCollapsed: collapsed, toggleSidebar } = useUiStore();
   const breaks = useBreakSnapshot();
-  const items = navByRole[user.role].filter(i => !i.to.endsWith('/breaks') || (breaks.data?.capabilities.view && (user.role !== 'SUPERVISOR' || breaks.data.capabilities.monitor)));
+  const { pathname } = useLocation();
+  if (!user) return null;
+  const activeArea = user.role === 'SUPERVISOR' ? supervisorAreaFor(pathname) : undefined;
+  const items = visibleNavigation(navByRole[user.role], user.role, breaks.data);
   const groups = items.reduce<Record<string, typeof items>>((acc, it) => {
     const g = it.group ?? '';
     (acc[g] ??= []).push(it);
@@ -28,19 +33,13 @@ export function Sidebar() {
       )}>
       
       <div className={cn('flex items-center gap-2.5 px-4 pb-3 pt-4', collapsed && 'justify-center px-0')}>
-        <span className="app-primary-action flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-white">
-          <WaypointsIcon className="h-5 w-5" aria-hidden />
-        </span>
+        <BrandLogo compact />
         <div className={cn('min-w-0', collapsed ? 'hidden' : 'hidden lg:block')}>
-          <p className="text-[15px] font-semibold leading-tight text-ink">Relay WFM</p>
+          <p className="text-[15px] font-semibold leading-tight text-ink">PortCity Digital</p>
           <p className="text-[11px] leading-tight text-ink-subtle">BPO Platform Operations</p>
         </div>
       </div>
 
-      <div className={cn('app-primary-action mx-3 mb-2 rounded-2xl px-3.5 py-3 text-white', collapsed ? 'hidden' : 'hidden lg:block')}>
-        <p className="text-sm font-semibold">Q3 2026 rotation cycle</p>
-        <p className="mt-0.5 text-xs text-primary-100">Jul 01 → Sep 30 · swap on Oct 01</p>
-      </div>
 
       <nav className="scroll-thin flex-1 overflow-y-auto px-3 pb-3">
         {Object.entries(groups).map(([group, list]) =>
@@ -49,21 +48,21 @@ export function Sidebar() {
             <ul className="space-y-0.5">
               {list.map((it) =>
             <li key={it.to}>
-                  <NavLink
+                  <Link
                 to={it.to}
-                end={it.to === '/'}
                 title={it.label}
-                className={({ isActive }) =>
+                aria-current={(activeArea ? activeArea.to === it.to : matchesDestination(pathname, it.to)) ? 'page' : undefined}
+                className={
                 cn(
-                  'flex h-9 items-center gap-3 rounded-xl px-2.5 text-[13px] font-medium transition-colors duration-150',
+                  'flex h-10 items-center gap-3 rounded-xl px-2.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
                   collapsed ? 'justify-center' : 'justify-center lg:justify-start',
-                  isActive ? 'bg-primary-50 text-primary-700' : 'text-ink-muted hover:bg-mist hover:text-ink'
+                  (activeArea ? activeArea.to === it.to : matchesDestination(pathname, it.to)) ? 'bg-primary-50 text-primary-700' : 'text-ink-muted hover:bg-mist hover:text-ink'
                 )
                 }>
                 
                     <it.icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
                     <span className={cn('truncate', collapsed ? 'sr-only' : 'sr-only lg:not-sr-only')}>{it.label}</span>
-                  </NavLink>
+                  </Link>
                 </li>
             )}
             </ul>

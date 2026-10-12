@@ -6,14 +6,14 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { DeptTag, IdText, ShiftTag } from '../ui/Tags';
 
 // Resource view: a laptop shows its CURRENT shift user and NEXT scheduled user — never a permanent owner.
-export function LaptopTable({ rows, showPool = true }: {rows: Laptop[];showPool?: boolean;}) {
+export function LaptopTable({ rows, showPool = true, onSelect }: {rows: Laptop[];showPool?: boolean;onSelect?: (laptop: Laptop) => void;}) {
   const navigate = useNavigate();
   return (
     <DataTable
       rows={rows}
       rowKey={(r) => r.assetId}
       caption="Laptops"
-      onRowClick={(r) => navigate(`/laptops/${r.assetId}`)}
+      onRowClick={(r) => onSelect ? onSelect(r) : navigate(`/laptops/${r.assetId}`)}
       columns={[
       { key: 'ws', header: 'Workstation', cell: (r) => <IdText className="font-semibold">{r.workstationId ?? '— unpooled'}</IdText> },
       { key: 'asset', header: 'Laptop', cell: (r) => <IdText className="text-ink-muted">{r.assetId}</IdText> },

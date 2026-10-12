@@ -44,7 +44,7 @@ export function Shifts() {
             <Card className="p-5 lg:col-span-2">
               <p className="text-sm">
                 Permanent employees rotate between Morning and Night every 3 months. See the{' '}
-                <Link to="/rotation" className="font-medium text-primary hover:underline">rotation schedule</Link>. Attendance and biometric clock-in are handled outside Relay.
+                <Link to="/rotation" className="font-medium text-primary hover:underline">rotation schedule</Link>. Attendance and biometric clock-in are handled outside PortCity Digital.
               </p>
             </Card>
           </div>

@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDownIcon, ArrowUpIcon, UserPlusIcon } from 'lucide-react';
@@ -16,6 +16,8 @@ import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { api, type EmployeeQuery } from '../../services/api';
 import type { Employee } from '../../types/domain';
 import { cn } from '../../utils/cn';
+import { Dialog } from '../../components/ui/Dialog';
+import { fmtDate } from '../../utils/format';
 
 const PAGE_SIZE = 100;
 const COLS = 'grid-cols-[110px_minmax(160px,1.4fr)_90px_60px_minmax(150px,1.2fr)_96px_minmax(150px,1fr)_90px_100px_90px]';
@@ -33,18 +35,22 @@ const headers: {key: keyof Employee;label: string;}[] = [
 { key: 'accountStatus', label: 'Account' }];
 
 
-export function Employees() {
-  const navigate = useNavigate();
+export function Employees({ embedded = false }: { embedded?: boolean }) {
   const [scope, setScope] = useState<Scope>({ category: '', platform: '', dept: '', shift: '' });
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [compact, setCompact] = useState(false);
+  const detail = useQuery({ queryKey: ['employee', selectedId], queryFn: () => api.getEmployee(selectedId ?? ''), enabled: !!selectedId });
   const [sort, setSort] = useState<{key: keyof Employee;dir: 'asc' | 'desc';}>({ key: 'id', dir: 'asc' });
   const query: EmployeeQuery = { ...scope, search, status, page, pageSize: PAGE_SIZE, sort: sort.key, dir: sort.dir };
   const q = useQuery({ queryKey: ['employees', query], queryFn: () => api.listEmployees(query), placeholderData: keepPreviousData });
   const parentRef = useRef<HTMLDivElement>(null);
   const items = q.data?.items ?? [];
-  const virtualizer = useVirtualizer({ count: items.length, getScrollElement: () => parentRef.current, estimateSize: () => 44, overscan: 10 });
+  const rowHeight = compact ? 36 : 44;
+  const virtualizer = useVirtualizer({ count: items.length, getScrollElement: () => parentRef.current, estimateSize: () => rowHeight, overscan: 10 });
+  useEffect(() => { virtualizer.measure(); }, [rowHeight, virtualizer]);
 
   const update = <T,>(fn: (v: T) => void) => (v: T) => {
     fn(v);
@@ -52,13 +58,15 @@ export function Employees() {
   };
 
   return (
-    <div>
-      <PageHeader title="Employee directory" description="Server-side search, filtering, sorting and pagination. Rows are virtualised for large result sets." actions={<Link to="/register"><Button icon={<UserPlusIcon className="h-4 w-4" />}>Register staff</Button></Link>} />
+    <div className={embedded ? 'mt-5' : undefined}>
+      {embedded ? <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-base font-semibold">Employee directory</h2><p className="mt-1 text-xs text-ink-muted">Search staff and inspect assignments without leaving the directory.</p></div><span className="text-xs text-ink-muted">{q.data ? `${q.data.total} matching employees` : 'Loading staff…'}</span></div> : <PageHeader title="Employee directory" description="Search, filter and inspect workforce records. Rows are virtualised for large result sets." actions={<Link to="/register"><Button icon={<UserPlusIcon className="h-4 w-4" />}>Register staff</Button></Link>} />}
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={update(setSearch)} placeholder="Search ID, name, email" className="w-64" />
           <ScopeFilters value={scope} onChange={update(setScope)} />
           <Select compact className="w-40" aria-label="Status" value={status} onChange={(e) => update(setStatus)(e.target.value)} placeholder="Any status" options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'ON_LEAVE', label: 'On leave' }, { value: 'LOCKED', label: 'Account locked' }, { value: 'INVITED', label: 'Account invited' }]} />
+          <button aria-pressed={compact} onClick={() => setCompact(!compact)} className="rounded-lg border border-line px-3 py-2 text-xs text-ink-muted">{compact ? 'Comfortable rows' : 'Compact rows'}</button>
+          {(search || status || Object.values(scope).some(Boolean)) && <button onClick={() => {setSearch('');setStatus('');setScope({ category: '', platform: '', dept: '', shift: '' });setPage(1);}} className="px-3 py-2 text-xs text-primary">Clear filters</button>}
         </div>
         {q.isPending ?
         <LoadingBlock rows={10} /> :
@@ -93,8 +101,8 @@ export function Employees() {
                       key={e.id}
                       role="row"
                       tabIndex={0}
-                      onClick={() => navigate(`/employees/${e.id}`)}
-                      onKeyDown={(ev) => ev.key === 'Enter' && navigate(`/employees/${e.id}`)}
+                      onClick={() => setSelectedId(e.id)}
+                      onKeyDown={(ev) => ev.key === 'Enter' && setSelectedId(e.id)}
                       className={cn('absolute left-0 right-0 grid cursor-pointer items-center border-b border-line text-[13px] hover:bg-primary-50/50 focus-visible:bg-primary-50 focus-visible:outline-none', COLS)}
                       style={{ height: v.size, transform: `translateY(${v.start}px)` }}>
                       
@@ -118,6 +126,18 @@ export function Employees() {
         }
         {q.data && <Pagination page={page} pageSize={PAGE_SIZE} total={q.data.total} onPage={setPage} />}
       </Card>
+      <Dialog open={!!selectedId} onClose={() => setSelectedId(null)} placement="right" title={detail.data?.employee.name ?? selectedId ?? 'Employee details'} description={selectedId ?? undefined} footer={selectedId && <Link to={`/employees/${selectedId}`} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Open full record</Link>}>
+        {detail.isPending ? <LoadingBlock rows={5} /> : detail.isError ? <ErrorState error={detail.error} onRetry={() => detail.refetch()} /> : detail.data && <>
+          <div className="mb-5 flex gap-2"><StatusBadge status={detail.data.employee.status} /><StatusBadge status={detail.data.employee.accountStatus} /></div>
+          <h3 className="mb-3 text-sm font-semibold">Operational assignment</h3><dl className="space-y-3 text-sm">{[
+            ['Platform', detail.data.employee.platformCode], ['Department', detail.data.employee.dept], ['Position', detail.data.employee.position],
+            ['Shift', detail.data.employee.shift], ['Workstation', detail.data.employee.currentWorkstationId],
+            ['Off-days used', `${detail.data.employee.offDaysUsed} / ${detail.data.employee.offDaysAllowance}`], ['Joined', fmtDate(detail.data.employee.joinedAt)],
+          ].map(([label, value]) => <div key={label} className="flex justify-between gap-4 border-b border-line pb-3"><dt className="text-ink-muted">{label}</dt><dd className="text-right">{value ?? '—'}</dd></div>)}</dl>
+          <h3 className="mb-3 mt-6 text-sm font-semibold">Contact details</h3><p className="break-all text-sm text-ink-muted">{detail.data.employee.email}</p>
+          <p className="mt-4 text-xs text-ink-subtle">Open the full record for schedules, off-days, replacements and audit history.</p>
+        </>}
+      </Dialog>
     </div>);
 
 }

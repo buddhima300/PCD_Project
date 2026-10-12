@@ -23,7 +23,6 @@ export function PlatformCard({ platform: p, mode = 'live' }: PlatformCardProps) 
         p.opStatus === 'INCIDENT' ? 'border-danger-100' : p.opStatus === 'WARNING' ? 'border-warning-100' : 'border-line',
         p.status !== 'ACTIVE' && 'opacity-70'
       )}>
-      
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[15px] font-semibold text-ink">{p.code}</p>

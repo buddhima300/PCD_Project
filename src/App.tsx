@@ -11,6 +11,7 @@ const named = <K extends string,>(loader: () => Promise<Record<K, React.Componen
 lazy(() => loader().then((m) => ({ default: m[name] })));
 
 const DashboardHome = named(() => import('./pages/dashboard/DashboardHome'), 'DashboardHome');
+const SupervisorHub = named(() => import('./pages/system/SupervisorHub'), 'SupervisorHub');
 const PlatformOperations = named(() => import('./pages/platforms/PlatformOperations'), 'PlatformOperations');
 const PlatformCapacity = named(() => import('./pages/platforms/PlatformCapacity'), 'PlatformCapacity');
 const PlatformCategories = named(() => import('./pages/platforms/PlatformCategories'), 'PlatformCategories');
@@ -76,6 +77,10 @@ export function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<AppShell />}>
             <Route index element={<DashboardHome />} />
+            <Route path="scheduling" element={g(SUP, <SupervisorHub />)} />
+            <Route path="supervisor-operations" element={g(SUP, <SupervisorHub />)} />
+            <Route path="equipment" element={g(SUP, <SupervisorHub />)} />
+            <Route path="insights" element={g(SUP, <SupervisorHub />)} />
             <Route path="operations" element={g(SUP, <PlatformOperations />)} />
             <Route path="capacity" element={g(SUP, <PlatformCapacity />)} />
             <Route path="categories" element={g(SUP, <PlatformCategories />)} />
@@ -130,7 +135,7 @@ export function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-      <Toaster position="top-right" richColors closeButton toastOptions={{ style: { fontFamily: 'Inter, sans-serif' } }} />
+      <Toaster theme="dark" position="top-right" richColors closeButton toastOptions={{ style: { fontFamily: 'Inter, sans-serif' } }} />
     </QueryClientProvider>);
 
 }

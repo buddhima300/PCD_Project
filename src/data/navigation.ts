@@ -5,6 +5,7 @@ import {
   UserCircleIcon, UserPlusIcon, UserRoundCogIcon, UsersIcon, TriangleAlertIcon, type LucideIcon } from
 'lucide-react';
 import type { Role } from '../types/domain';
+import { supervisorAreas } from './supervisorNavigation';
 
 export interface NavItem {
   label: string;
@@ -13,7 +14,7 @@ export interface NavItem {
   group?: string;
 }
 
-export const navByRole: Record<Role, NavItem[]> = {
+export const legacyNavByRole: Record<Role, NavItem[]> = {
   SUPERVISOR: [
   { label: 'Break Management', to: '/breaks', icon: Clock3Icon, group: 'Scheduling' },
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon, group: 'Overview' },
@@ -74,7 +75,7 @@ export const navByRole: Record<Role, NavItem[]> = {
 };
 
 export const mobilePrimary: Record<Role, string[]> = {
-  SUPERVISOR: ['/', '/operations', '/replacements', '/pools'],
+  SUPERVISOR: ['/', '/workforce', '/scheduling', '/supervisor-operations'],
   EMPLOYEE: ['/', '/my/schedule', '/my/off-days', '/handover'],
   FREELANCER: ['/', '/my/availability', '/my/assignments', '/handover']
 };
@@ -83,4 +84,9 @@ export const roleLabels: Record<Role, string> = {
   SUPERVISOR: 'Supervisor',
   EMPLOYEE: 'Permanent Employee',
   FREELANCER: 'Freelancer'
+};
+
+export const navByRole: Record<Role, NavItem[]> = {
+  ...legacyNavByRole,
+  SUPERVISOR: supervisorAreas,
 };

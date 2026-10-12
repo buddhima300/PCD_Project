@@ -1,0 +1,249 @@
+/* Shared Formix-inspired agency theme for every role and the login screen. */
+.agency-theme {
+  --canvas: 10 10 11;
+  --surface: 23 23 25;
+  --mist: 34 32 31;
+  --line: 57 52 48;
+  --line-strong: 111 83 58;
+  --ink: 247 243 237;
+  --ink-muted: 195 184 173;
+  --ink-subtle: 170 158 147;
+  --primary-50: 51 31 21;
+  --primary-100: 73 41 23;
+  --primary-200: 133 73 32;
+  --primary-500: 255 137 52;
+  --primary: 255 135 85;
+  --primary-700: 255 163 119;
+  --success-50: 23 44 32;
+  --success-100: 34 61 43;
+  --success-600: 125 220 151;
+  --success: 125 220 151;
+  --warning-50: 54 38 17;
+  --warning-100: 80 54 24;
+  --warning-600: 255 193 93;
+  --warning: 255 193 93;
+  --danger-50: 54 24 25;
+  --danger-100: 80 37 38;
+  --danger-600: 255 145 139;
+  --danger: 232 82 73;
+  --violet-50: 38 30 53;
+  --violet-100: 58 45 80;
+  --violet-600: 194 170 245;
+  --violet: 194 170 245;
+  color-scheme: dark;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  color: rgb(var(--ink));
+}
+.agency-theme .app-shell-canvas {
+  background: radial-gradient(ellipse at 85% 0, rgba(120,40,12,.09), transparent 40%), #090a0b;
+}
+.agency-theme .app-glass-bar {
+  background: #111112;
+  border-color: #302822;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.agency-theme aside.app-glass-bar {
+  margin: 16px 0 16px 16px;
+  top: 16px;
+  height: calc(100vh - 32px);
+  border: 1px solid #3c2c20;
+  border-radius: 16px;
+  background: #101011;
+}
+.agency-theme aside nav a { min-height: 44px; border-radius: 10px; }
+.agency-theme aside nav a[aria-current='page'] {
+  background: #392317;
+  color: #ffb665;
+  box-shadow: inset 3px 0 #ff8b3e;
+}
+.agency-theme .app-panel {
+  background: #171719;
+  border: 1px solid #38312b;
+  border-radius: 14px;
+  box-shadow: 0 10px 24px -16px #000;
+  backdrop-filter: none;
+}
+.agency-theme .app-primary-action {
+  background: #c64213;
+  color: #fff;
+  box-shadow: none;
+}
+.agency-theme .app-primary-action:hover:not(:disabled) { background: #a9350d; }
+.agency-theme .app-primary-action:disabled { background: #64503e; color: #e9d7c8; box-shadow: none; }
+.agency-theme button { cursor: pointer; }
+.agency-theme button:disabled { cursor: not-allowed; }
+.agency-theme button.app-primary-action,
+.agency-theme button.app-raised-control { border-radius: 999px; min-height: 36px; }
+.agency-theme .app-raised-control { border-color: #574233; box-shadow: none; }
+.agency-theme .app-input {
+  background: #1d1b19;
+  border-color: #574738;
+  box-shadow: none;
+}
+.agency-theme .app-input:focus,
+.agency-theme .app-input:focus-visible { background: #25211d; border-color: #ffa64a; box-shadow: 0 0 0 3px #ffa64a22; }
+.agency-theme h1 {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.65rem, 2.5vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -.045em;
+  line-height: 1.15;
+  color: #f5f5f3;
+}
+.agency-theme h2 { font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: -.03em; }
+.agency-theme header > div > p { line-height: 1.65; }
+.agency-theme [data-kpi-tone] { padding: 22px; border-radius: 18px; border-top: 2px solid #b3622b; }
+.agency-theme [data-kpi-tone] .text-2xl { font-size: 2rem; font-weight: 800; letter-spacing: -.05em; }
+.agency-theme [data-kpi-tone='info'] { background: linear-gradient(140deg, #322015, #191719 80%); }
+.agency-theme [data-kpi-tone='success'] { background: #17231d; border-top-color: #498c61; }
+.agency-theme [data-kpi-tone='warning'] { background: #2a2216; border-top-color: #c39843; }
+.agency-theme [data-kpi-tone='violet'] { background: #231e2c; border-top-color: #8266ab; }
+.agency-theme [data-kpi-tone='danger'] { background: #2b1b1c; border-top-color: #c46158; }
+.agency-theme .supervisor-tool-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  padding: 10px 10px 18px;
+  border: 1px solid #483224;
+  border-radius: 18px;
+  background: #151414;
+  box-shadow: 0 10px 24px -16px #000;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: box-shadow 180ms, border-color 180ms;
+}
+.agency-theme .supervisor-tool-card:hover { background: #1b1714; border-color: #e18a44; box-shadow: 0 10px 25px -16px #ff802b66; }
+.agency-theme .supervisor-tool-art {
+  grid-column: 1 / -1;
+  display: flex;
+  min-height: 110px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 100%, #75341166, transparent 75%), #101011;
+  box-shadow: inset 0 0 0 1px #35271c;
+}
+.agency-theme .supervisor-tool-art svg { width: 34px; height: 34px; stroke-width: 1.4; color: #ffa64a; filter: drop-shadow(0 0 12px #fc75284d); }
+.agency-theme .supervisor-tool-card > .flex-1 { padding-left: 8px; }
+.agency-theme .supervisor-tool-card[data-equipment-art] .supervisor-tool-art {
+    position: relative;
+    overflow: hidden;
+  aspect-ratio: 2 / 1;
+  min-height: 0;
+  background-image: url('/images/equipment-ember-illustrations.png');
+  background-size: 200% 400%;
+  background-repeat: no-repeat;
+  box-shadow: none;
+}
+  .agency-theme .supervisor-tool-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 40px 16px 14px;
+    background: linear-gradient(180deg, transparent 20%, #090a0b55 45%, #090a0bf2 100%);
+    color: #f5f2ef;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    text-shadow: 0 1px 3px #000;
+  }
+  .agency-theme .supervisor-tool-art[data-area-art] {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 2 / 1;
+    min-height: 0;
+    background-image: url('/images/supervisor-feature-illustrations.png');
+    background-size: 200% 200%;
+    background-repeat: no-repeat;
+    box-shadow: none;
+  }
+  .agency-theme .supervisor-tool-art svg.supervisor-tool-feature-icon {
+    position: absolute;
+    z-index: 1;
+    top: 12px;
+    left: 12px;
+    width: 24px;
+    height: 24px;
+    padding: 7px;
+    box-sizing: content-box;
+    border: 1px solid #ff87554d;
+    border-radius: 10px;
+    background: #090a0bcc;
+  }
+  .agency-theme .feature-panel-art {
+    display: block;
+    position: relative;
+    height: 112px;
+    margin: 10px 10px 0;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #090a0b;
+  }
+  .agency-theme .feature-panel-art > span {
+    position: absolute;
+    height: 100%;
+    aspect-ratio: 1;
+    right: 10%;
+    top: 0;
+    background-repeat: no-repeat;
+  }
+  .agency-theme .feature-panel-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #090a0b, transparent 45%, #090a0b22);
+  }
+  .agency-theme .feature-panel-art.feature-tool-image {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    margin: 0;
+    border-radius: inherit;
+  }
+  .agency-theme [data-workspace] .feature-panel-art { display: none; }
+  .agency-theme [data-workspace] .app-panel { min-width: 0; border-radius: 10px; box-shadow: none; }
+  .agency-theme .equipment-detail-panel { box-shadow: -15px 0 50px #0008; }
+  .agency-theme .equipment-compact tbody td { padding-top: 6px; padding-bottom: 6px; }
+  .agency-theme .workspace-compact tbody td { padding-top: 6px; padding-bottom: 6px; }
+  .agency-theme .workspace-tabs a { min-height: 44px; }
+  .agency-theme [data-workspace] [data-kpi-tone] { border-top-width: 1px; background: #151516; }
+  .agency-theme [data-workspace] .app-raised-control { box-shadow: none; }
+.agency-theme .supervisor-tool-arrow { box-sizing: content-box; margin-right: 6px; padding: 8px; color: #ff8755; background: #17120f; border: 1px solid #77412b; border-radius: 50%; }
+.agency-theme table thead { background: #262019; }
+.agency-theme table tbody tr:hover { background: #29211a; }
+.agency-theme :is(a, button, input, select, textarea):focus-visible { outline: 2px solid #ffb75e; outline-offset: 3px; }
+.agency-theme :is(.bg-white, [class~='bg-white/80'], [class~='bg-white/95']) { background-color: #171719; }
+.agency-theme .font-sans { font-family: 'Inter', sans-serif; }
+.agency-theme button.bg-danger { background: #a82e28; color: #fff; }
+.agency-theme button.bg-danger:hover:not(:disabled) { background: #c54136; }
+html.agency-theme body { background: #0b0b0c; color: rgb(var(--ink)); font-family: 'Inter', sans-serif; }
+.agency-theme .login-page { background: radial-gradient(ellipse at 25% 45%, #4b1b0b33, transparent 48%), #090a0b; }
+.agency-theme .neumorph-card { background: #141415; border: 1px solid #3b3028; box-shadow: none; backdrop-filter: none; border-radius: 20px; }
+.agency-theme .neumorph-inset { background: #1b1a19; border-color: #54453a; box-shadow: none; }
+.agency-theme .neumorph-inset:focus-within { background: #201d1a; border-color: #ff8755; box-shadow: 0 0 0 3px #ff875522; }
+.agency-theme .neumorph-btn { background: #1b1917; border-color: #544236; box-shadow: none; }
+.agency-theme .neumorph-btn:hover { background: #2b201a; transform: none; box-shadow: none; }
+.agency-theme .neumorph-btn.is-active { background: #442316; border-color: #df7644; box-shadow: none; }
+.agency-theme .neumorph-cta-btn { background: #c64213; border: 0; border-radius: 999px; box-shadow: none; }
+.agency-theme .neumorph-cta-btn:hover { background: #a9350d; transform: none; box-shadow: none; }
+.agency-theme :is(.ambient-glass-ring, .ambient-glass-orb) { display: none; }
+.agency-theme .login-eyebrow { font-size: 10px; letter-spacing: .16em; font-weight: 600; color: #ff8755; }
+.agency-theme .login-intro h2 { font-size: clamp(3rem, 5vw, 4.5rem); letter-spacing: -.055em; line-height: 1.05; margin-top: 24px; }
+.agency-theme .login-intro h2 span { color: #ff7035; }
+.agency-theme .login-art { aspect-ratio: 2 / 1; max-width: 400px; border-radius: 16px; background: url('/images/equipment-ember-illustrations.png') 100% 100% / 200% 400%; }
+.agency-theme .login-layout > .neumorph-card { width: 100%; justify-self: center; }
+.agency-theme input[type='checkbox'] { accent-color: #ed6a31; }
+.agency-theme .login-page .h-13 { min-height: 48px; }
+.agency-theme .text-emerald-800 { color: #91e6ba; }
+.agency-theme .bg-emerald-100 { background-color: #183a2c; }
+.agency-theme [data-role-icon] { color: #ff8755; }
+.agency-theme .scroll-thin::-webkit-scrollbar-thumb { background: #634831; }
+@media (max-width: 767px) {
+  .agency-theme h1 { font-size: 1.65rem; }
+  .agency-theme button.app-primary-action,
+  .agency-theme button.app-raised-control { min-height: 44px; }
+}

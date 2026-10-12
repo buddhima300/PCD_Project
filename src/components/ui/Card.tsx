@@ -15,6 +15,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, description, action, className, icon }: CardHeaderProps) {
   return (
+    <>
     <div className={cn('flex items-start justify-between gap-3 px-5 pt-4', className)}>
       <div className="flex min-w-0 items-start gap-2.5">
         {icon}
@@ -24,6 +25,6 @@ export function CardHeader({ title, description, action, className, icon }: Card
         </div>
       </div>
       {action && <div className="shrink-0">{action}</div>}
-    </div>);
+    </div></>);
 
 }

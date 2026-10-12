@@ -1,16 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BriefcaseIcon, PlaneIcon, LockIcon, UserRoundCogIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { CapacityMeter } from '../../components/ui/CapacityMeter';
-import { KpiTile } from '../../components/ui/KpiTile';
+import { WorkspaceSummary } from '../../components/ui/WorkspaceSummary';
+import { Employees } from './Employees';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { QueryView } from '../../components/ui/States';
 import { DeptTag } from '../../components/ui/Tags';
 import { api } from '../../services/api';
 import { deptNames } from '../../utils/format';
+import { SupervisorHubLinks } from '../system/SupervisorHub';
 
 export function WorkforceOverview() {
   const q = useQuery({ queryKey: ['workforce-overview'], queryFn: () => api.getWorkforceOverview() });
@@ -21,8 +22,8 @@ export function WorkforceOverview() {
         description="Permanent employees are assigned to a platform, department and shift. Freelancers belong to one department and cover absences."
         actions={
           <div className="flex gap-2">
-            <Link to="/candidates">
-              <Button size="sm">Candidates</Button>
+            <Link to="/register">
+              <Button size="sm">Register staff</Button>
             </Link>
             <Link to="/placement-queue">
               <Button size="sm" variant="secondary">Placement Queue</Button>
@@ -30,15 +31,18 @@ export function WorkforceOverview() {
           </div>
         }
       />
+      <SupervisorHubLinks />
       <QueryView query={q}>
         {(d) =>
         <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <KpiTile label="Permanent employees" value={d.totals.permanent} sub={`${d.totals.required} seats × 2 shifts required`} icon={BriefcaseIcon} tone="info" to="/employees" />
-              <KpiTile label="Freelancers" value={d.totals.freelancers} sub={`${d.totals.activeFreelancers} active`} icon={UserRoundCogIcon} tone="violet" to="/freelancers" />
-              <KpiTile label="On leave" value={d.totals.onLeave} icon={PlaneIcon} tone="warning" />
-              <KpiTile label="Accounts not active" value={d.totals.locked} sub="locked or invited" icon={LockIcon} tone="danger" />
-            </div>
+            <WorkspaceSummary label="Workforce summary" items={[
+              { label: 'Permanent employees', value: d.totals.permanent },
+              { label: 'Freelancers', value: d.totals.freelancers, note: `${d.totals.activeFreelancers} active` },
+              { label: 'On leave', value: d.totals.onLeave },
+              { label: 'Accounts not active', value: d.totals.locked, note: 'Locked or invited' },
+              { label: 'Required staff', value: d.totals.required, note: 'Across both shifts' },
+            ]} />
+            <details className="mb-5 rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm font-medium">Coverage by category and department</summary>
             <div className="grid gap-4 xl:grid-cols-2">
               <Card>
                 <CardHeader title="Staffing by platform category" description="Rostered permanent employees vs seats required across both shifts" />
@@ -80,9 +84,11 @@ export function WorkforceOverview() {
                 </div>
               </Card>
             </div>
+            </details>
           </div>
         }
       </QueryView>
+      <Employees embedded />
     </div>);
 
 }

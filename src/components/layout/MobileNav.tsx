@@ -1,79 +1,36 @@
-import { NavLink } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { MenuIcon, XIcon } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { MenuIcon } from 'lucide-react';
 import { mobilePrimary, navByRole } from '../../data/navigation';
+import { matchesDestination, supervisorAreaFor, visibleNavigation } from '../../data/supervisorNavigation';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { useUiStore } from '../../hooks/useUiStore';
 import { cn } from '../../utils/cn';
 import { useBreakSnapshot } from '../../features/break-management/hooks';
+import { Dialog } from '../ui/Dialog';
 
 export function MobileNav() {
-  const user = useSessionStore((s) => s.user)!;
+  const user = useSessionStore(s => s.user);
   const { moreOpen, setMoreOpen } = useUiStore();
   const breaks = useBreakSnapshot();
-  const items = navByRole[user.role].filter(i => !i.to.endsWith('/breaks') || (breaks.data?.capabilities.view && (user.role !== 'SUPERVISOR' || breaks.data.capabilities.monitor)));
-  const primary = mobilePrimary[user.role].map((to) => items.find((i) => i.to === to)!).filter(Boolean);
-
-  return (
-    <>
-      <nav aria-label="Mobile" className="app-glass-bar fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] md:hidden">
-        {primary.map((it) =>
-        <NavLink
-          key={it.to}
-          to={it.to}
-          end={it.to === '/'}
-          className={({ isActive }) => cn('flex h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium', isActive ? 'text-primary' : 'text-ink-muted')}>
-          
-            <it.icon className="h-5 w-5" aria-hidden />
-            <span className="max-w-[72px] truncate">{it.label.replace('Platform ', '')}</span>
-          </NavLink>
-        )}
-        <button onClick={() => setMoreOpen(true)} className="flex h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium text-ink-muted" aria-label="Open full navigation">
-          <MenuIcon className="h-5 w-5" aria-hidden />
-          More
-        </button>
-      </nav>
-      <AnimatePresence>
-        {moreOpen &&
-        <div className="fixed inset-0 z-50 md:hidden">
-            <motion.div className="absolute inset-0 bg-ink/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={() => setMoreOpen(false)} />
-            <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-surface p-4 pb-8">
-            
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold">All sections</p>
-                <button onClick={() => setMoreOpen(false)} className="rounded-lg p-1.5 hover:bg-mist" aria-label="Close navigation">
-                  <XIcon className="h-5 w-5" />
-                </button>
-              </div>
-              <ul className="grid grid-cols-3 gap-2">
-                {items.map((it) =>
-              <li key={it.to}>
-                    <NavLink
-                  to={it.to}
-                  end={it.to === '/'}
-                  onClick={() => setMoreOpen(false)}
-                  className={({ isActive }) =>
-                  cn('flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-1 text-center text-[11px] font-medium', isActive ? 'border-primary-200 bg-primary-50 text-primary-700' : 'border-line text-ink-muted')
-                  }>
-                  
-                      <it.icon className="h-5 w-5" aria-hidden />
-                      <span className="leading-tight">{it.label}</span>
-                    </NavLink>
-                  </li>
-              )}
-              </ul>
-            </motion.div>
-          </div>
-        }
-      </AnimatePresence>
-    </>);
-
+  const { pathname } = useLocation();
+  if (!user) return null;
+  const area = user.role === 'SUPERVISOR' ? supervisorAreaFor(pathname) : undefined;
+  const items = visibleNavigation(navByRole[user.role], user.role, breaks.data);
+  const primary = mobilePrimary[user.role].flatMap(to => items.filter(item => item.to === to));
+  const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary';
+  const renderLink = (item: typeof items[number], grid: boolean) => <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)} aria-current={(area ? area.to === item.to : matchesDestination(pathname, item.to)) ? 'page' : undefined}
+    className={cn('flex flex-col items-center justify-center gap-1 text-center text-xs font-medium', focus, grid ? 'min-h-20 rounded-xl border border-line p-2' : 'h-16', (area ? area.to === item.to : matchesDestination(pathname, item.to)) ? 'bg-primary-50 text-primary-700' : 'text-ink-muted')}>
+    <item.icon className="h-5 w-5" aria-hidden /><span>{item.label}</span>
+  </Link>;
+  return <>
+    <nav aria-label="Mobile" className="app-glass-bar fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] md:hidden">
+      {primary.map(item => renderLink(item, false))}
+      <button onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen} className={cn('flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-muted', focus)} aria-label="Open full navigation">
+        <MenuIcon className="h-5 w-5" aria-hidden />More
+      </button>
+    </nav>
+    <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title="All sections">
+      <nav aria-label="All sections" className="grid grid-cols-2 gap-2">{items.map(item => renderLink(item, true))}</nav>
+    </Dialog>
+  </>;
 }

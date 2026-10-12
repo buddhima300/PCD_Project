@@ -8,7 +8,8 @@ import { DataTable } from '../../components/ui/DataTable';
 import { Input, Select } from '../../components/ui/Field';
 import { MonthNav } from '../../components/ui/MonthNav';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { ScopeFilters, type Scope } from '../../components/ui/ScopeFilters';
+import { ScopeFilters } from '../../components/ui/ScopeFilters';
+import { useUrlScope } from '../../hooks/useUrlScope';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { EmptyState, QueryView } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -23,15 +24,18 @@ import { deptNames, fmtShiftWindow } from '../../utils/format';
 type View = 'monthly' | 'daily' | 'platform' | 'department';
 const STATES: RosterState[] = ['WORKING', 'OFF', 'ABSENT', 'REPLACED', 'LEAVE'];
 
-export function Roster() {
+export function Roster({ embedded = false }: { embedded?: boolean }) {
   const [params, setParams] = useSearchParams();
   const view = params.get('view') as View ?? 'monthly';
   const { platforms } = useReferenceData();
-  const [scope, setScope] = useState<Scope>({ category: '', platform: '', dept: '', shift: '' });
+  const [scope, setScope] = useUrlScope(true);
   const [state, setState] = useState<RosterState | ''>('');
   const [search, setSearch] = useState('');
-  const [month, setMonth] = useState(TODAY.slice(0, 7));
-  const [date, setDate] = useState(TODAY);
+  const month = params.get('month') ?? TODAY.slice(0, 7);
+  const date = params.get('date') ?? TODAY;
+  const updateParam = (key: string, value: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set(key, value); return next; });
+  const setMonth = (value: string) => updateParam('month', value);
+  const setDate = (value: string) => updateParam('date', value);
   const [platform, setPlatform] = useState('KANE-13');
   const [dept, setDept] = useState<DeptCode>('DP');
 
@@ -49,8 +53,8 @@ export function Roster() {
 
   return (
     <div>
-      <PageHeader title="Roster" description="Permanent employee schedules by platform, department and shift. Absences show the replacing freelancer." />
-      <Tabs className="mb-4" value={view} onChange={(v) => setParams({ view: v })} tabs={[{ id: 'monthly', label: 'Monthly' }, { id: 'daily', label: 'Daily' }, { id: 'platform', label: 'Platform' }, { id: 'department', label: 'Department' }]} />
+      {embedded ? <div className="mb-3"><h2 className="text-base font-semibold">Coverage roster</h2><p className="mt-1 text-xs text-ink-muted">Review monthly, daily, platform or department coverage.</p></div> : <PageHeader title="Roster" description="Permanent employee schedules by platform, department and shift. Absences show the replacing freelancer." />}
+      <Tabs className="mb-4" value={view} onChange={(v) => updateParam('view', v)} tabs={[{ id: 'monthly', label: 'Monthly' }, { id: 'daily', label: 'Daily' }, { id: 'platform', label: 'Platform' }, { id: 'department', label: 'Department' }]} />
 
       {view === 'monthly' &&
       <Card>
