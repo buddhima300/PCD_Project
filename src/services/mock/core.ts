@@ -16,9 +16,11 @@ export class ApiError extends Error {
 }
 
 let auth: {role: Role;userId: string;name: string;} | null = null;
+let authGeneration = 0;
 
 export function setAuthContext(a: {role: Role;userId: string;name: string;} | null): void {
   auth = a;
+  authGeneration++;
 }
 
 export function currentAuth(): {role: Role;userId: string;name: string;} {
@@ -35,9 +37,14 @@ export function requireRole(...roles: Role[]) {
 }
 
 export function respond<T>(fn: () => T): Promise<T> {
+  const generation = authGeneration;
   return new Promise((resolve, reject) => {
     const delay = mockConfig.latencyMs * (0.6 + Math.random() * 0.8);
     setTimeout(() => {
+      if (generation !== authGeneration) {
+        reject(new ApiError('SESSION_CHANGED', 'The signed-in worker changed. Reload this request under the current account.', 401));
+        return;
+      }
       if (mockConfig.simulateNetworkFailure) {
         reject(new ApiError('NETWORK_FAILURE', 'Unable to reach the PortCity Digital operations API. Check your connection and retry.', 0));
         return;

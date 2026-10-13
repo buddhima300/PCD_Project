@@ -6,6 +6,7 @@ import type {
 import { ApiError, currentAuth, requireRole, respond } from './core';
 import { db, pushAudit } from './db';
 import { allPools, paginate, poolSummary, textMatch } from './selectors';
+import { businessDate, handoverInstant } from '../../utils/shiftTime';
 
 const nowIso = () => format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss");
 
@@ -160,7 +161,7 @@ export const resourceApi = {
   respond(() => {
     requireRole('SUPERVISOR');
     return db.handovers.
-    filter((h) => !q.date || h.scheduledAt.startsWith(q.date)).
+    filter((h) => !q.date || businessDate(handoverInstant(h.scheduledAt)) === q.date).
     filter((h) => !q.platform || h.platformCode === q.platform).
     filter((h) => !q.dept || h.dept === q.dept).
     filter((h) => !q.status || h.status === q.status).

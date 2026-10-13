@@ -73,9 +73,14 @@ export interface MyWork {
 export const systemApi = {
   login: (email: string, _password: string): Promise<SessionUser> =>
   respond(() => {
-    const u = demoUsers.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
-    if (!u) throw new ApiError('INVALID_CREDENTIALS', 'Email or password is incorrect. Accounts lock after 5 failed attempts.', 401);
-    return u;
+    const normalized = email.trim().toLowerCase();
+    const u = demoUsers.find((x) => x.email.toLowerCase() === normalized);
+    const employee = db.employees.find(e => e.email.toLowerCase() === normalized && e.status === 'ACTIVE' && e.accountStatus === 'ACTIVE');
+    const freelancer = db.freelancers.find(f => f.email.toLowerCase() === normalized && f.status === 'ACTIVE' && f.accountStatus === 'ACTIVE');
+    if (_password !== 'demo-password' || (!u && !employee && !freelancer)) throw new ApiError('INVALID_CREDENTIALS', 'Email or password is incorrect.', 401);
+    if (u) return u;
+    const person = employee ?? freelancer!;
+    return { id: person.id, name: person.name, email: person.email, role: employee ? 'EMPLOYEE' : 'FREELANCER', title: employee?.position ?? 'Freelancer' };
   }),
 
   getDashboard: (f: DashboardFilters): Promise<OpsDashboard> =>

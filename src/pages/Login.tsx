@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,9 +29,11 @@ export function Login() {
   const user = useSessionStore(state => state.user);
   const signIn = useSessionStore(state => state.signIn);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const switchingWorker = params.get('switchWorker') === '1';
   const reducedMotion = useReducedMotion();
   const [motionEnabled, setMotionEnabled] = useState(true);
-  const [savedEmail] = useState(() => localStorage.getItem('portcity-login-email') ?? '');
+  const [savedEmail] = useState(() => switchingWorker ? '' : localStorage.getItem('portcity-login-email') ?? '');
   const [rememberEmail, setRememberEmail] = useState(Boolean(savedEmail));
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
@@ -39,7 +41,7 @@ export function Login() {
   const [showHelp, setShowHelp] = useState(false);
   const isAnimated = motionEnabled && !reducedMotion;
   const { register, handleSubmit, setValue, watch, formState } = useForm<FormValues>({
-    resolver: zodResolver(schema), defaultValues: { email: savedEmail || demoUsers[0]?.email || '', password: 'demo-password' },
+    resolver: zodResolver(schema), defaultValues: { email: switchingWorker ? '' : savedEmail || demoUsers[0]?.email || '', password: switchingWorker ? '' : 'demo-password' },
   });
   const currentEmail = watch('email');
   const activeDemoUser = demoUsers.find(account => account.email.toLowerCase() === currentEmail.trim().toLowerCase());
@@ -50,7 +52,7 @@ export function Login() {
       if (rememberEmail) localStorage.setItem('portcity-login-email', values.email.trim());
       else localStorage.removeItem('portcity-login-email');
       signIn(account);
-      navigate('/');
+      navigate(switchingWorker && account.role !== 'SUPERVISOR' ? '/my/workstation' : '/');
     },
   });
   const selectAccount = (account: typeof demoUsers[number]) => {

@@ -335,6 +335,17 @@ export interface ChecklistResult {
 }
 
 export interface Handover {
+  attendanceTracked?: boolean;
+  plannedAssetId?: string;
+  incomingNotes?: string;
+  outgoingNotes?: string;
+  equipmentIssue?: string;
+  selfConfirmationReason?: string;
+  selfConfirmation?: import('./attendance').HandoverConfirmation;
+  incomingConfirmation?: import('./attendance').HandoverConfirmation;
+  outgoingConfirmation?: import('./attendance').HandoverConfirmation;
+  corrections?: import('./attendance').HandoverCorrection[];
+  revision?: number;
   id: string;
   assetId: string;
   workstationId: string;
