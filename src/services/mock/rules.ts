@@ -21,6 +21,7 @@ export interface FreelancerRecord {
   currentAssignmentId?: string | null;
   currentPlatform?: string | null;
   positionCode?: string;
+  trainingId?: string;
 }
 
 export type AvailabilityMap = Record<string, Record<string, Record<ShiftCode, AvailabilityState>>>;

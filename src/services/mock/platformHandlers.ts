@@ -23,7 +23,7 @@ export function listPlatformSummaries(q: PlatformQuery = {}): PlatformSummary[] 
   filter((p) => !q.category || p.categoryCode === q.category).
   filter((p) => !q.status || p.status === q.status).
   filter((p) => !q.dept || Boolean(p.departments[q.dept])).
-  filter((p) => textMatch(q.search, p.code, p.id)).
+  filter((p) => textMatch(q.search, p.code, p.id, p.name, p.description)).
   map((p) => summarizePlatform(p, counts));
   if (q.opStatus) list = list.filter((p) => p.opStatus === q.opStatus);
   list.sort((a, b) => {
@@ -82,6 +82,7 @@ export const platformApi = {
     const p = db.platforms.find((x) => x.code === code);
     if (!p) throw new ApiError('NOT_FOUND', `Platform ${code} does not exist.`, 404);
     if (!input.reason || input.reason.trim().length < 5) throw new ApiError('VALIDATION', 'A change reason of at least 5 characters is required for audit.', 422);
+    if (p.lifecycle) throw new ApiError('VALIDATION', 'Use Manage setup & staffing to configure this platform and explicitly activate it.', 422);
     const changes: string[] = [];
     for (const d of DEPT_ORDER) {
       const before = p.departments[d] ?? 0;

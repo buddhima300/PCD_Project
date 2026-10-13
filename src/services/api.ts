@@ -2,6 +2,7 @@
 // with the same method signatures to connect the production REST API — no UI changes required.
 import { ApiError, setAuthContext } from './mock/core';
 import { platformApi } from './mock/platformHandlers';
+import { platformSetupApi } from './mock/platformSetupHandlers';
 import { replacementApi } from './mock/replacementHandlers';
 import { reportApi } from './mock/reportHandlers';
 import { resourceApi } from './mock/resourceHandlers';
@@ -13,6 +14,7 @@ import { disciplinaryApi } from './mock/disciplinaryHandlers';
 
 export const api = {
   ...platformApi,
+  ...platformSetupApi,
   ...workforceApi,
   ...schedulingApi,
   ...replacementApi,

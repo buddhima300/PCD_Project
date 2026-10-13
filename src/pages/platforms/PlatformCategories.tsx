@@ -10,6 +10,7 @@ import { QueryView } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { api } from '../../services/api';
 import type { CategorySummary } from '../../types/domain';
+import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 import { fmtDate } from '../../utils/format';
 
 export function PlatformCategories() {
@@ -26,7 +27,7 @@ export function PlatformCategories() {
 
   return (
     <div>
-      <PageHeader title="Platform categories" description="Top level of the platform hierarchy. Counts are provided by the operations API." />
+      <PageHeader title="Platform categories" description="Organize platforms into categories and create new operational platforms." actions={<PlatformSetupActions />} />
       <Card>
         <div className="flex flex-wrap gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search categories" className="w-64" />
@@ -42,6 +43,7 @@ export function PlatformCategories() {
             onRowClick={(r) => navigate(`/categories/${r.code}`)}
             columns={[
             { key: 'code', header: 'Code', sortable: true, cell: (r) => <span className="font-semibold">{r.code}</span> },
+            { key: 'name', header: 'Name', sortable: true, cell: (r) => r.name },
             { key: 'id', header: 'Category ID', cell: (r) => <span className="font-mono text-xs text-ink-muted">{r.id}</span> },
             { key: 'description', header: 'Description', cell: (r) => <span className="text-ink-muted">{r.description}</span> },
             { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },

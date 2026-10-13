@@ -15,6 +15,7 @@ import { useReferenceData } from '../../hooks/useReferenceData';
 import { api, errorMessage } from '../../services/api';
 import type { DeptCapacity, DeptCode, EntityStatus } from '../../types/domain';
 import { cn } from '../../utils/cn';
+import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 import { deptNames, fmtDateTime } from '../../utils/format';
 
 const DEPTS: DeptCode[] = ['GS', 'DP', 'WD', 'SAFETY'];
@@ -54,7 +55,7 @@ export function PlatformConfig() {
 
   return (
     <div>
-      <PageHeader title="Platform configuration" description="Department workstation capacity per platform. Changes are validated by the backend against current assignments and fully audited." />
+      <PageHeader title="Platform configuration" description="Department workstation capacity per platform. New platforms use the setup panel for seats, shift staffing targets and activation." actions={selected && <PlatformSetupActions platformCode={selected} compact />} />
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <Card className="h-fit">
           <div className="border-b border-line p-3">

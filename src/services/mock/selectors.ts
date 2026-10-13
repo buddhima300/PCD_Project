@@ -49,15 +49,16 @@ export function allPools(): PoolSummary[] {
 }
 
 export function summarizePlatform(p: Platform, counts = groupCountMap()): PlatformSummary {
-  const emps = db.employees.filter((e) => e.platformCode === p.code);
+  const emps = db.employees.filter((e) => e.platformCode === p.code && e.qualifiedForProduction !== false && e.status === 'ACTIVE');
+  const freelancers = db.freelancers.filter(f => f.currentPlatform === p.code && f.trainingId && f.qualifiedForProduction && f.status === 'ACTIVE');
   const occupancy = DEPT_ORDER.filter((d) => p.departments[d]).map((d) => {
     const pool = poolSummary(p, d);
     return {
       dept: d,
       poolId: pool.id,
       capacity: pool.capacity,
-      morning: emps.filter((e) => e.dept === d && e.shift === 'MORNING').length,
-      night: emps.filter((e) => e.dept === d && e.shift === 'NIGHT').length,
+      morning: emps.filter((e) => e.dept === d && e.shift === 'MORNING').length + freelancers.filter(f => f.dept === d && db.trainingAssignments.some(t => t.id === f.trainingId && t.promotedAt && t.shift === 'MORNING')).length,
+      night: emps.filter((e) => e.dept === d && e.shift === 'NIGHT').length + freelancers.filter(f => f.dept === d && db.trainingAssignments.some(t => t.id === f.trainingId && t.promotedAt && t.shift === 'NIGHT')).length,
       occupiedNow: pool.occupied,
       available: pool.available,
       handoverPending: pool.handoverPending
@@ -77,9 +78,10 @@ export function summarizePlatform(p: Platform, counts = groupCountMap()): Platfo
     for (const o of occupancy) if ((counts.get(`${p.code}|${o.dept}|${date}`) ?? 0) >= OFFDAY_GROUP_LIMIT) offDayAlerts++;
   }
   const occupiedNow = occupancy.reduce((s, o) => s + o.occupiedNow, 0);
-  const understaffed = occupancy.some((o) => o.morning < o.capacity || o.night < o.capacity);
+  const understaffed = occupancy.some((o) => o.morning < (p.staffingTargets?.[o.dept]?.MORNING ?? o.capacity) || o.night < (p.staffingTargets?.[o.dept]?.NIGHT ?? o.capacity));
   const failed = db.replacements.some((x) => x.platformCode === p.code && x.date >= TODAY && x.status === 'FAILED');
   const opStatus: PlatformSummary['opStatus'] =
+  p.lifecycle === 'SETUP' ? 'SETUP' :
   p.status !== 'ACTIVE' ?
   'INACTIVE' :
   incidents.some((i) => i.severity === 'HIGH' || i.severity === 'CRITICAL') ?
@@ -92,7 +94,7 @@ export function summarizePlatform(p: Platform, counts = groupCountMap()): Platfo
   return {
     ...p,
     totalWorkstations: total,
-    requiredWorkforce: total * 2,
+    requiredWorkforce: occupancy.reduce((s, o) => s + (p.staffingTargets?.[o.dept]?.MORNING ?? o.capacity) + (p.staffingTargets?.[o.dept]?.NIGHT ?? o.capacity), 0),
     morningWorkforce: occupancy.reduce((s, o) => s + o.morning, 0),
     nightWorkforce: occupancy.reduce((s, o) => s + o.night, 0),
     currentWorkforce: occupiedNow,
@@ -129,7 +131,7 @@ export function toFreelancer(f: FreelancerRecord): Freelancer {
     lifecycle: (f.lifecycle as any) ?? 'PRODUCTION_ACTIVE',
     qualifiedForProduction: f.qualifiedForProduction ?? true,
     currentAssignmentId: current?.id ?? null,
-    currentPlatform: current?.platformCode ?? null,
+    currentPlatform: current?.platformCode ?? f.currentPlatform ?? null,
     workloadUsed: workload,
     workloadLimit: WORKLOAD_LIMIT,
     todayMorning: today?.MORNING ?? 'UNAVAILABLE',

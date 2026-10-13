@@ -19,6 +19,7 @@ import type {
 } from '../../types/domain';
 import { ApiError, currentAuth, requireRole, respond } from './core';
 import { db, DEPT_ORDER, pad, plusDays, pushAudit, wsIdOf, poolIdOf } from './db';
+import { summarizePlatform } from './selectors';
 
 const nowIso = () => format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss");
 
@@ -138,10 +139,12 @@ export const placementApi = {
           const poolId = poolIdOf(p.code, d);
           const deptPositions = db.platformPositions.filter((pos) => pos.platformCode === p.code && pos.dept === d);
 
-          const activeCount = deptPositions.filter((pos) => pos.status === 'ACTIVE').length;
-          const trainingCount = deptPositions.filter((pos) => pos.status === 'TRAINING' || pos.status === 'RESERVED').length;
+          const coverage = p.staffingTargets ? summarizePlatform(p).occupancy.find(o => o.dept === d) : undefined;
+          const targetHeadcount = p.staffingTargets ? (p.staffingTargets[d]?.MORNING ?? 0) + (p.staffingTargets[d]?.NIGHT ?? 0) : targetCap;
+          const activeCount = coverage ? coverage.morning + coverage.night : deptPositions.filter((pos) => pos.status === 'ACTIVE').length;
+          const trainingCount = p.staffingTargets ? db.trainingAssignments.filter(t => t.platformCode === p.code && t.dept === d && !t.promotedAt && t.trainingStatus !== 'TRAINING_FAILED').length : deptPositions.filter((pos) => pos.status === 'TRAINING' || pos.status === 'RESERVED').length;
           const occupied = activeCount + trainingCount;
-          const vacancy = Math.max(0, targetCap - occupied);
+          const vacancy = Math.max(0, targetHeadcount - (p.staffingTargets ? activeCount : occupied));
 
           // Workstations
           const laps = db.laptops.filter((l) => l.poolId === poolId && l.workstationId && l.status !== 'RETIRED');
@@ -173,9 +176,9 @@ export const placementApi = {
             platformCode: p.code,
             categoryCode: p.categoryCode,
             dept: d,
-            minHeadcount: Math.max(1, targetCap - 1),
-            targetHeadcount: targetCap,
-            maxHeadcount: targetCap,
+            minHeadcount: Math.max(0, targetHeadcount - 1),
+            targetHeadcount,
+            maxHeadcount: p.staffingTargets ? targetCap * 2 : targetCap,
             activeHeadcount: activeCount,
             trainingHeadcount: trainingCount,
             vacancy,
@@ -516,7 +519,10 @@ export const placementApi = {
       const t = db.trainingAssignments.find((x) => x.id === id);
       if (!t) throw new ApiError('NOT_FOUND', `Training record ${id} not found.`, 404);
 
+      if (t.trainingOnly && (t.promotedAt || !['IN_TRAINING', 'TRAINING_EXTENDED'].includes(t.trainingStatus))) throw new ApiError('VALIDATION', 'This training placement is no longer in progress.', 422);
+
       const targetLog = t.dailyLogs.find((l) => l.day === day);
+      if (t.trainingOnly && (!targetLog || targetLog.status === 'COMPLETED' || day !== t.completedTrainingDays + 1)) throw new ApiError('VALIDATION', 'Complete the next scheduled training day once.', 422);
       if (targetLog) {
         targetLog.status = 'COMPLETED';
         if (notes) targetLog.notes = notes;
@@ -572,6 +578,25 @@ export const placementApi = {
         evaluation.systemUsage,
         evaluation.qualityStandards
       ];
+      if (t.trainingOnly) {
+        if (t.promotedAt || !['IN_TRAINING', 'TRAINING_EXTENDED'].includes(t.trainingStatus)) throw new ApiError('VALIDATION', 'This placement has already been evaluated.', 422);
+        if (evaluation.result === 'PASSED' && t.completedTrainingDays < t.requiredTrainingDays) throw new ApiError('VALIDATION', 'Complete all training days before qualification.', 422);
+        if (scores.some(score => !Number.isFinite(score) || score < 1 || score > 5)) throw new ApiError('VALIDATION', 'Evaluation scores must be between 1 and 5.', 422);
+        const extension = evaluation.extensionDays ?? 2;
+        if (evaluation.result === 'EXTEND' && (!Number.isInteger(extension) || extension < 1 || extension > 90)) throw new ApiError('VALIDATION', 'Extension must be 1–90 days.', 422);
+        t.evaluation = { ...evaluation, overallScore: scores.reduce((a, b) => a + b, 0) / scores.length, evaluatedBy: actor.name, evaluatedAt: nowIso() };
+        t.trainingStatus = evaluation.result === 'PASSED' ? 'TRAINING_COMPLETED' : evaluation.result === 'FAILED' ? 'TRAINING_FAILED' : 'TRAINING_EXTENDED';
+        if (evaluation.result === 'EXTEND') {
+          const oldDays = t.requiredTrainingDays;
+          t.dailyLogs.push(...Array.from({ length: extension }, (_, i) => ({ day: oldDays + i + 1, date: plusDays(t.expectedCompletionDate, i), status: 'SCHEDULED' as const, attendance: 'PRESENT' as const })));
+          t.requiredTrainingDays += extension; t.expectedCompletionDate = plusDays(t.expectedCompletionDate, extension);
+        }
+        else t.actualCompletionDate = TODAY;
+        const worker = db.employees.find(e => e.id === t.workerId);
+        if (worker) worker.lifecycle = evaluation.result === 'PASSED' ? 'TRAINING_COMPLETED' : evaluation.result === 'FAILED' ? 'TRAINING_FAILED' : 'TRAINING_EXTENDED';
+        pushAudit({ at: nowIso(), actorId: actor.userId, actorName: actor.name, role: actor.role, action: 'TRAINING_EVALUATED', entity: 'PlatformTrainingAssignment', entityId: t.id, platformCode: t.platformCode, dept: t.dept, previous: 'IN_TRAINING', next: t.trainingStatus, reason: evaluation.feedback || 'Supervisor qualification evaluation', isOverride: false });
+        return t;
+      }
       const avg = Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1));
 
       const evalRecord: TrainingEvaluation = {

@@ -21,7 +21,8 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { QueryView } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DeptTag, ShiftTag } from '../../components/ui/Tags';
-import { api } from '../../services/api';
+import { api, errorMessage } from '../../services/api';
+import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 import type { DeptCode, PlatformTrainingAssignment } from '../../types/domain';
 import { deptNames } from '../../utils/format';
 import { cn } from '../../utils/cn';
@@ -45,6 +46,7 @@ export function PlatformTraining() {
   });
 
   const progressMutation = useMutation({
+    onError: e => toast.error(errorMessage(e)),
     mutationFn: ({ id, day }: { id: string; day: number }) =>
       api.logTrainingProgress(id, day, `Supervisor approved completion of operational shift day ${day}.`),
     onSuccess: (updated) => {
@@ -59,6 +61,7 @@ export function PlatformTraining() {
   });
 
   const evalMutation = useMutation({
+    onError: e => toast.error(errorMessage(e)),
     mutationFn: ({ id, result, extensionDays }: { id: string; result: 'PASSED' | 'FAILED' | 'EXTEND'; extensionDays?: number }) =>
       api.evaluateTraining(id, {
         platformKnowledge,
@@ -72,8 +75,8 @@ export function PlatformTraining() {
       }),
     onSuccess: (updated, vars) => {
       if (vars.result === 'PASSED') {
-        toast.success(`Qualification Passed: Permanent Production Activated!`, {
-          description: `${updated.workerName} is now PRODUCTION_ACTIVE on ${updated.platformCode} (${updated.positionCode}). No second platform selection required.`
+        toast.success(updated.trainingOnly ? 'Qualification passed · ready for production assignment' : 'Qualification passed · production activated', {
+          description: updated.trainingOnly ? `${updated.workerName} remains in a training placement. Assign to production through the platform staffing panel.` : `${updated.workerName} is now PRODUCTION_ACTIVE on ${updated.platformCode} (${updated.positionCode}).`
         });
       } else if (vars.result === 'EXTEND') {
         toast.warning(`Training Extended`, {
@@ -106,7 +109,7 @@ export function PlatformTraining() {
     <div className="space-y-4">
       <PageHeader
         title="On-platform training & permanent qualification"
-        description="Every new recruit trains directly on the operational platform where their vacancy exists. Upon completing 5 working days and passing supervisor evaluation, they automatically transition to permanent production staff on that same platform."
+        description="Track platform training and qualification. New training placements remain separate from production staffing until a supervisor explicitly assigns the qualified person to production."
       />
 
       {/* KPI Counters */}
@@ -122,9 +125,9 @@ export function PlatformTraining() {
           <p className="mt-1 text-[11px] text-primary-700">Occupying platform capacity</p>
         </div>
         <div className="app-panel rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 backdrop-blur-xl">
-          <p className="text-xs font-medium text-emerald-800">Graduated to production</p>
+          <p className="text-xs font-medium text-emerald-800">Training qualified</p>
           <p className="mt-1 text-2xl font-bold text-emerald-900 tabular">{completedCount}</p>
-          <p className="mt-1 text-[11px] text-emerald-700">Active permanent members on platform</p>
+          <p className="mt-1 text-[11px] text-emerald-700">Includes qualified trainees awaiting production assignment</p>
         </div>
         <div className="app-panel rounded-2xl border border-amber-200 bg-amber-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-amber-800">Extended qualification</p>
@@ -199,6 +202,7 @@ export function PlatformTraining() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1.5">
+                            {t.trainingOnly && !t.promotedAt && t.trainingStatus === 'TRAINING_COMPLETED' && <PlatformSetupActions platformCode={t.platformCode} compact />}
                             <Button size="xs" variant="secondary" onClick={() => setSelectedTraining(t)}>
                               View Progress
                             </Button>
@@ -343,8 +347,7 @@ export function PlatformTraining() {
             </div>
 
             <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-3 text-xs text-primary-950 font-medium">
-              &ldquo;This worker is training on {selectedTraining.platformCode} and will automatically become a permanent member of{' '}
-              {selectedTraining.platformCode} upon passing qualification evaluation.&rdquo;
+              {selectedTraining.trainingOnly ? `This training placement on ${selectedTraining.platformCode} does not count toward production staffing. After passing qualification, a supervisor must explicitly assign the person to production.` : `This worker will become a production member of ${selectedTraining.platformCode} upon passing the existing qualification workflow.`}
             </div>
           </div>
         </Dialog>
@@ -378,7 +381,7 @@ export function PlatformTraining() {
                   loading={evalMutation.isPending}
                   icon={<AwardIcon className="h-4 w-4 text-emerald-400" />}
                 >
-                  Grade PASSED & Activate Permanently
+                  {evaluationModal.trainingOnly ? 'Pass qualification' : 'Pass & activate production'}
                 </Button>
               </div>
             </div>
@@ -386,8 +389,7 @@ export function PlatformTraining() {
         >
           <div className="space-y-4">
             <div className="rounded-xl border border-line bg-mist/30 p-3 text-xs text-ink-muted">
-              Rate the candidate across the 5 core operational dimensions. Passing evaluation activates position{' '}
-              <strong>{evaluationModal.positionCode}</strong> permanently on <strong>{evaluationModal.platformCode}</strong> without requiring a second platform selection.
+              Rate the candidate across the 5 core operational dimensions. {evaluationModal.trainingOnly ? 'Passing records qualification only. Production assignment is a separate supervisor action in the platform staffing panel.' : `Passing activates position ${evaluationModal.positionCode} on ${evaluationModal.platformCode}.`}
             </div>
 
             <div className="space-y-3">

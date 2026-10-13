@@ -16,6 +16,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Tabs } from '../../components/ui/Tabs';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { useSessionStore } from '../../hooks/useSessionStore';
+import { PlatformSetupActions, Coverage } from '../../components/platform/PlatformSetup';
 import { api } from '../../services/api';
 import { TODAY } from '../../utils/clock';
 import { deptNames, fmtDate, fmtDateTime } from '../../utils/format';
@@ -45,10 +46,10 @@ export function PlatformDetail() {
     <div>
       <PageHeader
         breadcrumbs={[{ label: 'Platforms', to: '/platforms' }, { label: p.categoryCode, to: role === 'SUPERVISOR' ? `/categories/${p.categoryCode}` : undefined }, { label: p.code }]}
-        title={p.code}
+        title={p.name ? `${p.code} · ${p.name}` : p.code}
         meta={<><StatusBadge status={p.status} /><StatusBadge status={p.opStatus} /></>}
         description={`${p.id} · Category ${p.categoryCode} · ${p.occupancy.map((o) => `${o.dept} ${o.capacity}`).join(' · ')} · Total ${p.totalWorkstations} workstations`}
-        actions={role === 'SUPERVISOR' && <Link to={`/platform-config/${p.code}`}><Button variant="secondary" size="sm" icon={<SlidersHorizontalIcon className="h-3.5 w-3.5" />}>Configure</Button></Link>} />
+        actions={role === 'SUPERVISOR' && <div className="flex flex-wrap gap-2"><PlatformSetupActions platformCode={p.code} compact />{!p.lifecycle && <Link to={`/platform-config/${p.code}`}><Button variant="secondary" size="sm" icon={<SlidersHorizontalIcon className="h-3.5 w-3.5" />}>Configure</Button></Link>}</div>} />
       
       <Tabs
         className="mb-4"
@@ -90,11 +91,12 @@ export function PlatformDetail() {
             </div>
             <div className="flex flex-wrap gap-6 border-t border-line px-5 py-3 text-sm">
               <span>Total <b className="tabular">{p.currentWorkforce} / {p.totalWorkstations}</b> occupied</span>
-              <span className="flex items-center gap-1"><SunIcon className="h-4 w-4 text-warning-600" /> Morning <b className="tabular">{p.morningWorkforce} / {p.totalWorkstations}</b></span>
-              <span className="flex items-center gap-1"><MoonIcon className="h-4 w-4 text-primary" /> Night <b className="tabular">{p.nightWorkforce} / {p.totalWorkstations}</b></span>
+              <span className="flex items-center gap-1"><SunIcon className="h-4 w-4 text-warning-600" /> Morning <b className="tabular">{p.morningWorkforce} / {p.occupancy.reduce((sum, o) => sum + (p.staffingTargets?.[o.dept]?.MORNING ?? o.capacity), 0)}</b></span>
+              <span className="flex items-center gap-1"><MoonIcon className="h-4 w-4 text-primary" /> Night <b className="tabular">{p.nightWorkforce} / {p.occupancy.reduce((sum, o) => sum + (p.staffingTargets?.[o.dept]?.NIGHT ?? o.capacity), 0)}</b></span>
             </div>
 
             {/* Platform Workforce Positions & Trainee Status */}
+            {p.staffingTargets && <div className="border-t border-line p-5"><Coverage platform={p} trainings={trainings.data ?? []} /></div>}
             <div className="border-t border-line p-5">
               <div className="mb-3 flex items-center justify-between">
                 <div>

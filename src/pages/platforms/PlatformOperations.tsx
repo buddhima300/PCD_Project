@@ -13,6 +13,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import { WorkspaceSummary } from '../../components/ui/WorkspaceSummary';
 import { api } from '../../services/api';
 import type { ShiftCode } from '../../types/domain';
+import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 
 type Mode = 'live' | ShiftCode;
 
@@ -29,7 +30,8 @@ export function PlatformOperations({ embedded = false }: { embedded?: boolean })
   const platforms = rows ? [...rows].sort((a, b) => sort === 'capacity' ? b.totalWorkstations - a.totalWorkstations : sort === 'attention' ? (b.activeIncidents - a.activeIncidents) || (b.pendingReplacements - a.pendingReplacements) || (b.pendingHandovers - a.pendingHandovers) || a.code.localeCompare(b.code) : a.code.localeCompare(b.code)) : [];
   const occupied = rows?.reduce((sum, platform) => sum + platform.occupancy.reduce((seats, occupancy) => seats + (mode === 'live' ? occupancy.occupiedNow : mode === 'MORNING' ? occupancy.morning : occupancy.night), 0), 0);
   return <div className={compact ? 'workspace-compact' : undefined}>
-    {!embedded && <PageHeader title="Platform operations" description="Inspect platform coverage, pending handovers and operational issues." />}
+    {!embedded && <PageHeader title="Platform operations" description="Inspect platform coverage, pending handovers and operational issues." actions={<PlatformSetupActions compact />} />}
+    {embedded && <div className="mb-3 flex justify-end"><PlatformSetupActions compact /></div>}
     <WorkspaceSummary label="Filtered platform summary" items={[
       { label: 'Matching platforms', value: rows?.length },
       { label: 'Configured seats', value: rows?.reduce((sum, platform) => sum + platform.totalWorkstations, 0) },
@@ -41,7 +43,7 @@ export function PlatformOperations({ embedded = false }: { embedded?: boolean })
     <Card>
       <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
         <ScopeFilters value={scope} onChange={setScope} show={['category', 'platform', 'dept']} />
-        <Select compact aria-label="Operational status" className="w-40" value={opStatus} onChange={event => setOpStatus(event.target.value)} placeholder="Any status" options={['OPERATIONAL', 'FULL', 'WARNING', 'INCIDENT', 'INACTIVE'].map(status => ({ value: status, label: status.charAt(0) + status.slice(1).toLowerCase() }))} />
+        <Select compact aria-label="Operational status" className="w-40" value={opStatus} onChange={event => setOpStatus(event.target.value)} placeholder="Any status" options={['SETUP', 'OPERATIONAL', 'FULL', 'WARNING', 'INCIDENT', 'INACTIVE'].map(status => ({ value: status, label: status.charAt(0) + status.slice(1).toLowerCase() }))} />
         <Select compact aria-label="Platform sort" className="w-40" value={sort} onChange={event => setSort(event.target.value)} options={[{ value: 'attention', label: 'Pending work first' }, { value: 'code', label: 'Platform code' }, { value: 'capacity', label: 'Largest capacity' }]} />
         <button aria-pressed={compact} onClick={() => setCompact(!compact)} className="rounded-lg border border-line px-3 py-2 text-xs text-ink-muted">{compact ? 'Comfortable rows' : 'Compact rows'}</button>
         {(opStatus || Object.values(scope).some(Boolean)) && <button onClick={() => { setScope({ category: '', platform: '', dept: '' }); setOpStatus(''); }} className="px-3 py-2 text-xs text-primary">Clear filters</button>}

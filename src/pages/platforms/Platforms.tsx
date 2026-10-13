@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { GaugeIcon } from 'lucide-react';
+import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { DataTable } from '../../components/ui/DataTable';
@@ -28,11 +29,11 @@ export function Platforms() {
       <PageHeader
         title="Platforms"
         description="Each platform runs its own department mix with its own workstation count."
-        actions={<Link to="/capacity"><Button variant="secondary" size="sm" icon={<GaugeIcon className="h-3.5 w-3.5" />}>Capacity matrix</Button></Link>} />
+        actions={<div className="flex flex-wrap items-center gap-2"><PlatformSetupActions compact /><Link to="/capacity"><Button variant="secondary" size="sm" icon={<GaugeIcon className="h-3.5 w-3.5" />}>Capacity matrix</Button></Link></div>} />
       
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search platform code or ID" className="w-60" />
+          <SearchInput value={search} onChange={setSearch} placeholder="Search platform code, name or ID" className="w-60" />
           <ScopeFilters value={scope} onChange={setScope} show={['category', 'dept']} />
           <Select compact className="w-32" aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="Any status" options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]} />
           <Select compact className="w-44" aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as PlatformQuery['sort'])} options={[{ value: 'code', label: 'Sort: category & code' }, { value: 'workstations', label: 'Sort: most workstations' }, { value: 'available', label: 'Sort: most available' }, { value: 'incidents', label: 'Sort: most incidents' }]} />
@@ -46,6 +47,7 @@ export function Platforms() {
             onRowClick={(r) => navigate(`/platforms/${r.code}`)}
             columns={[
             { key: 'code', header: 'Platform', cell: (r) => <span className="font-semibold">{r.code}</span> },
+            { key: 'name', header: 'Name', cell: (r) => r.name || '—' },
             { key: 'id', header: 'Platform ID', cell: (r) => <span className="font-mono text-xs text-ink-muted">{r.id}</span> },
             { key: 'cat', header: 'Category', cell: (r) => r.categoryCode },
             { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.opStatus} size="xs" /> },

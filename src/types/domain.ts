@@ -67,6 +67,10 @@ export interface Platform {
   categoryCode: string;
   status: EntityStatus;
   departments: DeptCapacity;
+  name?: string;
+  description?: string;
+  lifecycle?: 'SETUP' | 'OPERATIONAL';
+  staffingTargets?: Partial<Record<DeptCode, Record<ShiftCode, number>>>;
   updatedAt: string;
 }
 
@@ -81,7 +85,7 @@ export interface DeptOccupancy {
   handoverPending: number;
 }
 
-export type PlatformOpStatus = 'OPERATIONAL' | 'FULL' | 'WARNING' | 'INCIDENT' | 'INACTIVE';
+export type PlatformOpStatus = 'SETUP' | 'OPERATIONAL' | 'FULL' | 'WARNING' | 'INCIDENT' | 'INACTIVE';
 
 export interface PlatformSummary extends Platform {
   totalWorkstations: number;
@@ -637,6 +641,8 @@ export interface TrainingEvaluation {
 }
 
 export interface PlatformTrainingAssignment {
+  trainingOnly?: boolean;
+  promotedAt?: string;
   id: string;
   workerId: string;
   workerName: string;

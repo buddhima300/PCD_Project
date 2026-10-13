@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PlatformCard } from '../../components/platform/PlatformCard';
+import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 import { Card } from '../../components/ui/Card';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { ErrorState, LoadingBlock } from '../../components/ui/States';
@@ -21,7 +22,7 @@ export function CategoryDetail() {
         breadcrumbs={[{ label: 'Platform categories', to: '/categories' }, { label: c.code }]}
         title={c.code}
         meta={<StatusBadge status={c.status} />}
-        description={c.description} />
+        description={c.description} actions={<PlatformSetupActions categoryCode={c.code} compact />} />
       
       <Card className="mb-4">
         <dl className="grid grid-cols-2 divide-line md:grid-cols-5 md:divide-x">
