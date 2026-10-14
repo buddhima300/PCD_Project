@@ -12,6 +12,7 @@ import { workforceApi } from './mock/workforceHandlers';
 import { placementApi } from './mock/placementHandlers';
 import { disciplinaryApi } from './mock/disciplinaryHandlers';
 import { attendanceApi } from './mock/attendanceHandlers';
+import { profileApi } from './mock/profileHandlers';
 
 export const api = {
   ...platformApi,
@@ -24,7 +25,8 @@ export const api = {
   ...reportApi,
   ...placementApi,
   ...disciplinaryApi,
-  ...attendanceApi
+  ...attendanceApi,
+  ...profileApi
 };
 
 export type Api = typeof api;
