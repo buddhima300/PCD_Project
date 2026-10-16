@@ -1,15 +1,16 @@
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { PlatformSetupActions } from '../../components/platform/PlatformSetup';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { db } from '../../services/mock/db';
-import { mockConfig } from '../../services/mock/core';
+import { mockConfig, setAuthContext } from '../../services/mock/core';
+vi.mock('../../services/api', () => import('../../services/mock/testFacade'));
 
 const original = structuredClone({ categories: db.categories, platforms: db.platforms, audit: db.audit });
-beforeEach(() => { mockConfig.latencyMs = 0; useSessionStore.getState().signIn({ id: 'SUP-TEST', name: 'Supervisor', role: 'SUPERVISOR', title: 'Supervisor', email: 'supervisor@example.com' }); });
-afterEach(() => { cleanup(); for (const key of Object.keys(original) as (keyof typeof original)[]) { const array = db[key] as unknown[]; array.splice(0, array.length, ...structuredClone(original[key])); } useSessionStore.getState().signOut(); mockConfig.latencyMs = 320; });
+beforeEach(() => { mockConfig.latencyMs = 0; setAuthContext({userId:'SUP-TEST',name:'Supervisor',role:'SUPERVISOR'}); useSessionStore.getState().signIn({ id: 'SUP-TEST', name: 'Supervisor', role: 'SUPERVISOR', title: 'Supervisor', email: 'supervisor@example.com' }); });
+afterEach(() => { cleanup(); for (const key of Object.keys(original) as (keyof typeof original)[]) { const array = db[key] as unknown[]; array.splice(0, array.length, ...structuredClone(original[key])); } useSessionStore.getState().clear(); setAuthContext(null); mockConfig.latencyMs = 320; });
 function mount() { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><MemoryRouter><PlatformSetupActions /></MemoryRouter></QueryClientProvider>); }
 
 it('creates a setup platform, saves targets, skips staffing and explicitly activates', async () => {

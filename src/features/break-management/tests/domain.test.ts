@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { setApiAuth } from '../../../services/api';
+import { setAuthContext as setApiAuth } from '../../../services/mock/core';
 import { mockBreakApi, breakScenarios, resetBreakDemo } from '../mock';
 import { breakApi } from '../api';
 import { defaultFilters, snapshotSchema, sessionSchema, commandSchema } from '../contracts';

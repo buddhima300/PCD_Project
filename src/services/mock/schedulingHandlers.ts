@@ -40,6 +40,7 @@ function stateFor(e: EmployeeRecord, date: string, offSet: Set<string>): RosterC
 
 function filterEmployees(q: Omit<RosterQuery, 'month'>) {
   return db.employees.
+  filter((e) => !!e.platformCode).
   filter((e) => !q.employeeId || e.id === q.employeeId).
   filter((e) => !q.category || e.categoryCode === q.category).
   filter((e) => !q.platform || e.platformCode === q.platform).
@@ -137,6 +138,7 @@ export const schedulingApi = {
         const isPast = date <= TODAY;
         const full = approved >= OFFDAY_GROUP_LIMIT;
         let unavailableReason: string | null = null;
+        if (!e.platformCode) unavailableReason = 'Platform placement is required first';else
         if (isPast) unavailableReason = 'Date has passed';else
         if (req && req.status !== 'REJECTED') unavailableReason = 'You already have a request for this date';else
         if (full) unavailableReason = rejectionReason(e.platformCode, e.dept, date);else
@@ -156,6 +158,7 @@ export const schedulingApi = {
     if (a.role === 'EMPLOYEE' && a.userId !== employeeId) throw new ApiError('FORBIDDEN', 'You can only request off-days for yourself.', 403);
     const e = db.employees.find((x) => x.id === employeeId);
     if (!e) throw new ApiError('NOT_FOUND', `Employee ${employeeId} does not exist.`, 404);
+    if (!e.platformCode) throw new ApiError('PLACEMENT_REQUIRED', 'Platform placement is required before requesting off-days.', 409);
     if (date <= TODAY) throw new ApiError('PAST_DATE', 'Off-days must be requested for a future date.', 422);
     if (db.offDays.some((o) => o.employeeId === e.id && o.date === date && (isApproved(o.status) || o.status === 'REQUESTED'))) throw new ApiError('DUPLICATE', 'You already have an off-day on this date.', 409);
     const used = db.offDays.filter((o) => o.employeeId === e.id && o.date.startsWith(date.slice(0, 7)) && isApproved(o.status)).length;

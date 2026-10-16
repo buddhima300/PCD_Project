@@ -14,7 +14,8 @@ const write = (data: ProfileStorage) => localStorage.setItem('relay-profile-v1',
 function person(id: string) {
   const employee = db.employees.find(e => e.id === id);
   const freelancer = db.freelancers.find(e => e.id === id);
-  const supervisor = demoUsers.find(e => e.id === id && e.role === 'SUPERVISOR');
+  const actor = currentAuth();
+  const supervisor = demoUsers.find(e => e.id === id && e.role === 'SUPERVISOR') ?? (actor.role === 'SUPERVISOR' && actor.userId === id ? { id, name: actor.name, role: actor.role, email: '', title: 'Supervisor' } : undefined);
   const record = employee ?? freelancer ?? supervisor;
   if (!record) throw new ApiError('NOT_FOUND', 'Profile not found.', 404);
   return { record, role: supervisor ? 'SUPERVISOR' : freelancer ? 'FREELANCER' : 'EMPLOYEE' };

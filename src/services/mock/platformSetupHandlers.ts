@@ -38,9 +38,11 @@ export const platformSetupApi = {
     if (p.status !== 'ACTIVE') throw new ApiError('VALIDATION', 'Activate the platform before assigning production staff.', 422);
     if (seatCount(p.code, t.dept, t.shift) > (p.departments[t.dept] ?? 0)) throw new ApiError('CAPACITY_CONFLICT', 'Review capacity before promotion.', 409);
     const emp = db.employees.find(e => e.id === t.workerId);
+    const freelancer = db.freelancers.find(f => f.id === t.workerId);
     const candidate = db.candidates.find(c => c.id === t.workerId);
-    if (!emp && !candidate) throw new ApiError('NOT_FOUND', 'Worker record not found.', 404);
+    if (!emp && !freelancer && !candidate) throw new ApiError('NOT_FOUND', 'Worker record not found.', 404);
     if (emp) { emp.lifecycle = 'PRODUCTION_ACTIVE'; emp.qualifiedForProduction = true; }
+    else if (freelancer) { freelancer.lifecycle = 'PRODUCTION_ACTIVE'; freelancer.qualifiedForProduction = true; }
     else if (candidate?.employmentType === 'FREELANCER') {
       const id = `FL-${crypto.randomUUID()}`;
       db.freelancers.push({ uuid: crypto.randomUUID(), id, name: candidate.name, email: candidate.email, phone: candidate.phone, dept: t.dept, employmentType: 'EXTERNAL', priority: db.freelancers.filter(f => f.dept === t.dept).length + 1, status: 'ACTIVE', accountStatus: 'INVITED', compatibleCategories: [p.categoryCode], compatiblePlatforms: [p.code], currentAssignmentId: null, currentPlatform: p.code, joinedAt: TODAY, lifecycle: 'PRODUCTION_ACTIVE', qualifiedForProduction: true, trainingId: t.id });
@@ -98,9 +100,11 @@ export const platformSetupApi = {
     const p = get(code); const seats = p.departments[input.dept] ?? 0;
     if (!['MORNING', 'NIGHT'].includes(input.shift) || !seats) throw new ApiError('VALIDATION', 'Choose a configured department and shift.', 422);
     if (seatCount(code, input.dept, input.shift) >= seats) throw new ApiError('CAPACITY_CONFLICT', 'No seats remain on this department and shift.', 409);
-    const emp = db.employees.find(e => e.id === input.workerId && e.dept === input.dept && e.status === 'ACTIVE');
     const cand = db.candidates.find(c => c.id === input.workerId && c.dept === input.dept && ['SELECTED', 'ONBOARDING'].includes(c.status));
-    if ((!emp && !cand) || emp?.currentWorkstationId || db.platformPositions.some(pos => pos.assignedWorkerId === input.workerId && pos.status !== 'VACANT') || db.trainingAssignments.some(t => t.workerId === input.workerId && !t.promotedAt && t.trainingStatus !== 'TRAINING_FAILED')) throw new ApiError('ASSIGNMENT_CONFLICT', 'Person is unavailable or already assigned. Refresh the people list.', 409);
+    const workerId = cand?.registeredWorkerId ?? input.workerId;
+    const emp = db.employees.find(e => e.id === workerId && e.dept === input.dept && e.status === 'ACTIVE');
+    const freelancer = db.freelancers.find(f => f.id === workerId && f.dept === input.dept && f.status === 'ACTIVE');
+    if ((!emp && !cand && !freelancer) || emp?.currentWorkstationId || db.platformPositions.some(pos => pos.assignedWorkerId === workerId && pos.status !== 'VACANT') || db.trainingAssignments.some(t => t.workerId === workerId && !t.promotedAt && t.trainingStatus !== 'TRAINING_FAILED')) throw new ApiError('ASSIGNMENT_CONFLICT', 'Person is unavailable or already assigned. Refresh the people list.', 409);
     if (input.kind === 'PRODUCTION') {
       if (!emp || emp.qualifiedForProduction === false || emp.platformCode === code) throw new ApiError('VALIDATION', 'Choose an eligible qualified employee.', 422);
       emp.platformCode = code; emp.categoryCode = p.categoryCode; emp.poolId = poolIdOf(code, input.dept); emp.shift = input.shift; emp.nextShift = input.shift === 'MORNING' ? 'NIGHT' : 'MORNING'; emp.lifecycle = 'PRODUCTION_ACTIVE';
@@ -108,10 +112,11 @@ export const platformSetupApi = {
       if (emp && emp.qualifiedForProduction !== false) throw new ApiError('VALIDATION', 'Qualified production employees cannot be assigned as trainees.', 422);
       const days = input.trainingDays ?? 5;
       if (!Number.isInteger(days) || days < 1 || days > 90) throw new ApiError('VALIDATION', 'Training duration must be 1–90 days.', 422);
-      const worker = cand ?? emp!; const id = `TRN-${crypto.randomUUID()}`;
+      const worker = emp ?? freelancer ?? cand!; const id = `TRN-${crypto.randomUUID()}`;
       db.trainingAssignments.unshift({ id, workerId: worker.id, workerName: worker.name, workerType: cand?.employmentType ?? 'PERMANENT', platformCode: code, categoryCode: p.categoryCode, dept: input.dept, positionCode: `TRAINING-${input.dept}`, shift: input.shift, workstationPoolId: poolIdOf(code, input.dept), workstationId: '', laptopAssetId: '', trainingStartDate: TODAY, expectedCompletionDate: plusDays(TODAY, days), actualCompletionDate: null, requiredTrainingDays: days, completedTrainingDays: 0, trainingStatus: 'IN_TRAINING', evaluation: null, dailyLogs: Array.from({ length: days }, (_, i) => ({ day: i + 1, date: plusDays(TODAY, i), status: 'SCHEDULED', attendance: 'PRESENT' })), assignedBy: requireRole('SUPERVISOR').name, createdAt: TODAY, updatedAt: TODAY, trainingOnly: true });
       if (cand) cand.status = 'PLACED';
       if (emp) { emp.platformCode = code; emp.categoryCode = p.categoryCode; emp.poolId = poolIdOf(code, input.dept); emp.shift = input.shift; emp.lifecycle = 'IN_PLATFORM_TRAINING'; }
+      if (freelancer) { freelancer.currentPlatform = code; freelancer.compatibleCategories = [p.categoryCode]; freelancer.compatiblePlatforms = [code]; freelancer.lifecycle = 'IN_PLATFORM_TRAINING'; }
     }
     audit(code, 'PLATFORM_ASSIGNMENT', `${input.kind}: ${input.workerId} / ${input.dept} / ${input.shift}`); return summarizePlatform(p);
   }),

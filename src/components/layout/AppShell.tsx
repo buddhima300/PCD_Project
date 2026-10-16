@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { LoadingBlock } from '../ui/States';

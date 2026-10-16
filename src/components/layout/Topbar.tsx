@@ -1,15 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BellIcon, ChevronDownIcon, LogOutIcon, SearchIcon, UserCircleIcon, UsersIcon } from 'lucide-react';
+import { BellIcon, ChevronDownIcon, LogOutIcon, SearchIcon, UserCircleIcon } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
-import { demoUsers } from '../../data/reference';
 import { roleLabels } from '../../data/navigation';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { api } from '../../services/api';
-import { cn } from '../../utils/cn';
+import { toast } from 'sonner';
 
 export function initials(name: string) {
   return name.
@@ -20,7 +19,7 @@ export function initials(name: string) {
   toUpperCase();
 }
 
-function GlobalSearch() {
+export function GlobalSearch() {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const dq = useDebounce(q, 250);
@@ -83,13 +82,13 @@ function GlobalSearch() {
 
 export function Topbar() {
   const user = useSessionStore((s) => s.user)!;
-  const signIn = useSessionStore((s) => s.signIn);
+  const permissions = useSessionStore(s => s.permissions);
   const signOut = useSessionStore((s) => s.signOut);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}), refetchInterval: 60_000 });
+  const notif = useQuery({ queryKey: ['notifications', user.id, 'unread'], queryFn: () => api.listNotifications({ unreadOnly: true }), refetchInterval: 60_000 });
   useEffect(() => {
     const close = (e: MouseEvent) => !menuRef.current?.contains(e.target as Node) && setMenu(false);
     document.addEventListener('mousedown', close);
@@ -140,33 +139,16 @@ export function Topbar() {
                 <Link to="/profile" role="menuitem" onClick={() => setMenu(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-mist">
                   <UserCircleIcon className="h-4 w-4 text-ink-subtle" /> Profile
                 </Link>
-                <div className="my-1 border-t border-line" />
-                <p className="flex items-center gap-2 px-3 pb-1 pt-1.5 text-[11px] font-medium text-ink-subtle">
-                  <UsersIcon className="h-3.5 w-3.5" /> Switch demo account
-                </p>
-                {demoUsers.map((u) =>
-              <button
-                key={u.id}
-                role="menuitem"
-                onClick={() => {
-                  signIn(u);
-                  qc.clear();
-                  setMenu(false);
-                  navigate('/');
-                }}
-                className={cn('flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-[13px] hover:bg-mist', u.id === user.id && 'bg-primary-50 text-primary-700')}>
-                
-                    <span>{roleLabels[u.role]}</span>
-                    <span className="font-mono text-[11px] text-ink-subtle">{u.id}</span>
-                  </button>
-              )}
+                {permissions.includes('accounts.manage') && <>
+                  <Link to="/account-admin" role="menuitem" onClick={() => setMenu(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-mist">Account management · Add Supervisor</Link>
+                </>}
+                <Link to="/profile#password" role="menuitem" onClick={() => setMenu(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-mist">Change password</Link>
                 <div className="my-1 border-t border-line" />
                 <button
                 role="menuitem"
-                onClick={() => {
-                  signOut();
-                  qc.clear();
-                  navigate('/login');
+                onClick={async () => {
+                  try { await signOut(); await qc.cancelQueries(); qc.clear(); navigate('/login'); }
+                  catch (error) { toast.error(error instanceof Error ? error.message : 'Sign out failed. Try again.'); }
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger-600 hover:bg-danger-50">
                 

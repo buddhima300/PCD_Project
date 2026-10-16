@@ -9,8 +9,9 @@ import { breakApi } from '../api';
 import { WorkflowDialog, type Workflow } from '../WorkflowDialog';
 import { BreakManagementPage } from '../BreakManagementPage';
 import { defaultFilters } from '../contracts';
+import { setAuthContext } from '../../../services/mock/core';
 
-function login(role: 'EMPLOYEE' | 'SUPERVISOR' = 'EMPLOYEE') { useSessionStore.getState().signIn({ id: role === 'EMPLOYEE' ? 'EMP-00421' : 'USR-SUP-001', role, name: role === 'EMPLOYEE' ? 'Arjun Mehta' : 'Leila Haddad', title: role, email: 'demo@example.test' }); }
+function login(role: 'EMPLOYEE' | 'SUPERVISOR' = 'EMPLOYEE') { const user = { id: role === 'EMPLOYEE' ? 'EMP-00421' : 'USR-SUP-001', role, name: role === 'EMPLOYEE' ? 'Arjun Mehta' : 'Leila Haddad', title: role, email: 'demo@example.test' }; useSessionStore.getState().signIn(user); setAuthContext({userId:user.id,role:user.role,name:user.name}); }
 function mount(node: React.ReactNode, route = '/my/breaks') { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[route]}>{node}</MemoryRouter></QueryClientProvider>); return client; }
 async function dialog(workflow: Workflow) { const close = vi.fn(); const feedback = vi.fn(); mount(<WorkflowDialog workflow={workflow} onClose={close} onFeedback={feedback} />); await waitFor(() => expect(screen.getByRole('button', { name: 'Review decision' })).toBeEnabled()); return { close, feedback, user: userEvent.setup() }; }
 beforeEach(() => { login(); breakScenarios.now = Date.parse('2026-10-11T04:30:00Z'); resetBreakDemo(); Object.defineProperty(navigator, 'onLine', { value: true, configurable: true }); onlineManager.setOnline(true); });

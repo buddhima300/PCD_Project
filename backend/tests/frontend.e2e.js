@@ -1,0 +1,156 @@
+// Isolated full-stack smoke test: real Vite/React + Express + embedded PostgreSQL.
+// Never connects to the developer's database or uses their credentials.
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { chromium, expect } from '@playwright/test';
+import { createApp } from '../src/app.js';
+import { readConfig } from '../src/config.js';
+import { hashPassword } from '../src/shared/security.js';
+
+const engine = new PGlite();
+let server, vite, browser;
+const origin = 'http://localhost:5187';
+const password = 'Integration-password-42';
+try {
+  await engine.exec(await readFile(new URL('../migrations/001_foundation.sql',import.meta.url),'utf8'));
+  const db = { query:(sql,values)=>engine.query(sql,values),connect:async()=>({query:(sql,values)=>engine.query(sql,values),release(){}}) };
+  const id=randomUUID();
+  await db.query("INSERT INTO users(id,email,name,role,password_hash) VALUES($1,'integration-admin@example.test','Integration Admin','SUPERVISOR',$2)",[id,await hashPassword(password)]);
+  await db.query("INSERT INTO user_permissions(user_id,permission) VALUES($1,'accounts.manage'),($1,'audit.read')",[id]);
+  const config=readConfig({NODE_ENV:'test',DATABASE_URL:'postgresql://unused',FRONTEND_ORIGIN:origin});
+  server=createApp(db,config).listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  config.API_ORIGIN=`http://localhost:${server.address().port}`;
+  const api=`${origin}/api/v1`;
+  vite=spawn(process.execPath,[fileURLToPath(new URL('../../node_modules/vite/bin/vite.js',import.meta.url)),'--host','127.0.0.1','--port','5187','--strictPort'],{
+    cwd:fileURLToPath(new URL('../../',import.meta.url)),windowsHide:true,stdio:['ignore','pipe','pipe'],
+    env:{...process.env,PCD_API_TARGET:`http://127.0.0.1:${server.address().port}`,VITE_API_BASE_URL:'/api/v1',VITE_BREAK_ENABLED:'false',VITE_BREAK_ADAPTER:'real'},
+  });
+  let logs='';
+  vite.stdout.on('data',data=>{logs+=data.toString();});
+  vite.stderr.on('data',data=>{logs+=data.toString();});
+  for(let attempt=0;;attempt++) {
+    try{if((await fetch(origin)).ok)break;}catch{}
+    if(attempt>200||vite.exitCode!==null)throw new Error(`Vite did not start: ${logs}`);
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  browser=await chromium.launch({channel:process.env.PCD_TEST_BROWSER??'chrome',headless:true});
+  const page=await browser.newPage();
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  const writes=[];
+  page.on('request',req=>{if(req.url().startsWith(api)&&req.method()==='POST')writes.push({url:req.url(),headers:req.headers()});});
+  await page.goto(origin);
+  await expect(page.getByRole('heading',{name:'Welcome Back'})).toBeVisible();
+  await expect(page.getByLabel('Password',{exact:true})).toHaveValue('');
+  await expect(page.getByText('Quick Sign-in')).toHaveCount(0);
+  await page.getByLabel('Work email',{exact:true}).fill('integration-admin@example.test');
+  await page.getByLabel('Password',{exact:true}).fill(password);
+  await page.getByRole('button',{name:'Login',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Welcome, Integration Admin'})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Welcome, Integration Admin'})).toBeVisible();
+  await page.goto(`${origin}/register`);
+  await page.getByLabel('Worker number',{exact:true}).fill('EMP-INTEGRATION');
+  await page.getByLabel('Full name',{exact:true}).fill('Integration Worker');
+  await page.getByLabel('Work email',{exact:true}).fill('integration-worker@example.test');
+  await page.getByLabel('Worker type',{exact:true}).selectOption('EMPLOYEE');
+  await page.getByLabel('Department',{exact:true}).selectOption('DP');
+  await page.getByLabel('Joining date',{exact:true}).fill('2026-10-16');
+  await page.getByLabel('Initial password (12–128 characters)',{exact:true}).fill(password);
+  await page.getByRole('button',{name:'Create worker and login',exact:true}).click();
+  await expect(page.getByText(/Account created\. The new user/)).toBeVisible();
+  await page.goto(`${origin}/workforce`);
+  await expect(page.getByRole('cell',{name:'EMP-INTEGRATION',exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('cell',{name:'EMP-INTEGRATION',exact:true})).toBeVisible();
+  const worker=(await db.query("SELECT * FROM workers WHERE worker_number='EMP-INTEGRATION'")).rows[0];
+  if(!worker.user_id)throw new Error('One-step worker registration did not create a linked login.');
+  const legacyWorker=randomUUID();
+  await db.query("INSERT INTO workers(id,worker_number,name,email,worker_type,department_code,joined_at) VALUES($1,'PRE-EXISTING','Previously Registered','registered@example.test','FREELANCER','DP','2026-10-16')",[legacyWorker]);
+  await page.goto(`${origin}/settings`);
+  await page.getByRole('button',{name:'Create login',exact:true}).click();
+  await page.getByLabel('Worker initial password (12–128 characters)',{exact:true}).fill(password);
+  await page.getByRole('button',{name:'Create worker login',exact:true}).click();
+  await expect.poll(async()=>(await db.query('SELECT user_id FROM workers WHERE id=$1',[legacyWorker])).rows[0].user_id).not.toBeNull();
+  await expect(page.getByRole('cell',{name:'PRE-EXISTING',exact:true})).toHaveCount(0);
+  await page.getByLabel('Supervisor full name',{exact:true}).fill('Real New Supervisor');
+  await page.getByLabel('Supervisor work email',{exact:true}).fill('new-supervisor@example.test');
+  await page.getByLabel('Supervisor initial password (12–128 characters)',{exact:true}).fill(password);
+  await page.getByLabel('Allow this Supervisor to add and manage login accounts',{exact:true}).check();
+  await page.getByLabel('Allow this Supervisor to view audit logs',{exact:true}).check();
+  await page.getByRole('button',{name:'Create supervisor account',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'new-supervisor@example.test',exact:true})).toBeVisible();
+  await page.goto(`${origin}/categories`);
+  await page.getByLabel('Category code',{exact:true}).fill('INTEGRATION');
+  await page.getByLabel('Category name',{exact:true}).fill('Integration Category');
+  await page.getByRole('button',{name:'Save',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'INTEGRATION',exact:true})).toBeVisible();
+  const category=(await db.query("SELECT id FROM platform_categories WHERE code='INTEGRATION'")).rows[0];
+  await page.goto(`${origin}/platforms`);
+  await page.getByLabel('Platform code',{exact:true}).fill('LIVE-1');
+  await page.getByLabel('Platform name',{exact:true}).fill('Live Platform');
+  await page.getByLabel('Category ID (from Categories)',{exact:true}).fill(category.id);
+  await page.getByRole('button',{name:'Save',exact:true}).nth(1).click();
+  await expect(page.getByRole('cell',{name:'LIVE-1',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Capacity',exact:true}).click();
+  await page.getByLabel('Department',{exact:true}).selectOption('DP');
+  await page.getByLabel('Physical seats',{exact:true}).fill('5');
+  await page.getByLabel('Morning production target',{exact:true}).fill('3');
+  await page.getByLabel('Night production target',{exact:true}).fill('4');
+  await page.getByRole('button',{name:'Save',exact:true}).last().click();
+  await expect(page.getByRole('heading',{name:'Capacity for LIVE-1'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Activate',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'OPERATIONAL',exact:true})).toBeVisible();
+  await page.goto(`${origin}/audit`);
+  await expect(page.getByRole('cell',{name:'PLATFORM_ACTIVATED',exact:true})).toBeVisible();
+  await page.goto(`${origin}/roster`);
+  await expect(page.getByRole('heading',{name:'This workflow is not available yet'})).toBeVisible();
+  await page.getByRole('button',{name:/Integration Admin/}).click();
+  await page.getByRole('menuitem',{name:'Sign out'}).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Welcome Back'})).toBeVisible();
+  await page.getByLabel('Work email',{exact:true}).fill('integration-worker@example.test');
+  await page.getByLabel('Password',{exact:true}).fill(password);
+  await page.getByRole('button',{name:'Login',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Welcome, Integration Worker'})).toBeVisible();
+  await page.goto(`${origin}/workforce`);
+  await expect(page.getByRole('cell',{name:'EMP-INTEGRATION',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Change status',exact:true})).toHaveCount(0);
+  await page.goto(`${origin}/settings`);
+  await expect(page.getByText('Permission denied',{exact:true})).toBeVisible();
+  if(!writes.find(write=>write.url.endsWith('/accounts')&&write.headers['x-csrf-token']))throw new Error('No CSRF-protected onboarding write observed.');
+  // Verify actual Swagger buttons, not just the JSON specification or interceptor source.
+  const docs=await browser.newPage();
+  docs.on('pageerror',error=>errors.push(error.message));
+  await docs.goto(`${config.API_ORIGIN}/api-docs/`);
+  const loginOperation=docs.locator('.opblock-post').filter({has:docs.locator('.opblock-summary-path[data-path="/api/v1/auth/login"]')});
+  await loginOperation.locator('.opblock-summary').click();
+  await loginOperation.getByRole('button',{name:'Try it out',exact:true}).click();
+  await loginOperation.locator('textarea').fill(JSON.stringify({email:'new-supervisor@example.test',password}));
+  const [docsLogin]=await Promise.all([docs.waitForResponse(res=>res.url().endsWith('/api/v1/auth/login')&&res.request().method()==='POST'),loginOperation.getByRole('button',{name:'Execute',exact:true}).click()]);
+  expect(docsLogin.status()).toBe(200);
+  expect((await docsLogin.json()).user.role).toBe('SUPERVISOR');
+  const accountOperation=docs.locator('.opblock-post').filter({has:docs.locator('.opblock-summary-path[data-path="/api/v1/accounts"]')});
+  await accountOperation.locator('.opblock-summary').click();
+  await accountOperation.getByRole('button',{name:'Try it out',exact:true}).click();
+  await accountOperation.locator('textarea').fill(JSON.stringify({name:'Swagger Freelancer',email:'swagger-freelancer@example.test',password,role:'FREELANCER',worker:{workerNumber:'FL-SWAGGER',name:'Swagger Freelancer',email:'swagger-freelancer@example.test',workerType:'FREELANCER',departmentCode:'DP',joinedAt:'2026-10-16'}}));
+  const [docsCreate]=await Promise.all([docs.waitForResponse(res=>res.url().endsWith('/api/v1/accounts')&&res.request().method()==='POST'),accountOperation.getByRole('button',{name:'Execute',exact:true}).click()]);
+  expect(docsCreate.status()).toBe(201);
+  if(!(await db.query("SELECT user_id FROM workers WHERE worker_number='FL-SWAGGER'")).rows[0]?.user_id)throw new Error('Swagger did not persist the linked freelancer.');
+  await loginOperation.locator('textarea').fill(JSON.stringify({email:'swagger-freelancer@example.test',password}));
+  const [freelancerLogin]=await Promise.all([docs.waitForResponse(res=>res.url().endsWith('/api/v1/auth/login')&&res.request().method()==='POST'),loginOperation.getByRole('button',{name:'Execute',exact:true}).click()]);
+  expect(freelancerLogin.status()).toBe(200);
+  expect((await freelancerLogin.json()).user.role).toBe('FREELANCER');
+  if(errors.length)throw new Error(errors.join('\n'));
+  console.log('Full-stack smoke passed: one-step employee onboarding, Supervisor creation, real login/reload, platform writes, CSRF/audit/logout, employee access, and authenticated Swagger freelancer creation.');
+} finally {
+  if(browser)await browser.close();
+  if(vite){vite.kill();await new Promise(resolve=>{if(vite.exitCode!==null)resolve();else vite.once('exit',resolve);});}
+  if(server)await new Promise(resolve=>server.close(resolve));
+  await engine.close();
+}

@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AppShell } from './components/layout/AppShell';
 import { RequireRole } from './components/layout/RequireRole';
+import { SessionBoundary } from './components/layout/SessionBoundary';
+import { BackendWorkspace } from './pages/BackendWorkspace';
 import { Login } from './pages/Login';
 import type { Role } from './types/domain';
 
@@ -72,11 +74,13 @@ const g = (roles: Role[], el: React.ReactNode) => <RequireRole roles={roles}>{el
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <SessionBoundary><BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<AppShell />}>
             <Route index element={<DashboardHome />} />
+            <Route path="account-security" element={<Navigate to="/profile#password" replace />} />
+            <Route path="account-admin/*" element={g(SUP, <BackendWorkspace />)} />
             <Route path="scheduling" element={g(SUP, <SupervisorHub />)} />
             <Route path="supervisor-operations" element={g(SUP, <SupervisorHub />)} />
             <Route path="equipment" element={g(SUP, <SupervisorHub />)} />
@@ -134,7 +138,7 @@ export function App() {
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </BrowserRouter></SessionBoundary>
       <Toaster theme="dark" position="top-right" richColors closeButton toastOptions={{ style: { fontFamily: 'Inter, sans-serif' } }} />
     </QueryClientProvider>);
 

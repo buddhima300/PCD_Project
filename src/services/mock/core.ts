@@ -15,15 +15,16 @@ export class ApiError extends Error {
   }
 }
 
-let auth: {role: Role;userId: string;name: string;} | null = null;
+type AuthContext = { role: Role; userId: string; name: string; permissions?: string[] };
+let auth: AuthContext | null = null;
 let authGeneration = 0;
 
-export function setAuthContext(a: {role: Role;userId: string;name: string;} | null): void {
+export function setAuthContext(a: AuthContext | null): void {
   auth = a;
   authGeneration++;
 }
 
-export function currentAuth(): {role: Role;userId: string;name: string;} {
+export function currentAuth(): AuthContext {
   if (!auth) throw new ApiError('UNAUTHENTICATED', 'Your session has expired. Sign in again.', 401);
   return auth;
 }

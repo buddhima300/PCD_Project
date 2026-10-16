@@ -565,6 +565,7 @@ export type CandidateStatus =
 export type InterviewResult = 'SELECTED' | 'RECOMMENDED' | 'REJECTED' | 'PENDING';
 
 export interface RecruitCandidate {
+  registeredWorkerId?: string;
   id: string;
   name: string;
   email: string;

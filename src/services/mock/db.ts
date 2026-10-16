@@ -843,6 +843,8 @@ const trainingAssignments: PlatformTrainingAssignment[] = [
   }
 ];
 
+export function exportSequences() { return { empSeq, offSeq, repSeq, lapSeq, hoSeq, incSeq, auditSeq }; }
+export function importSequences(data: ReturnType<typeof exportSequences>) { ({ empSeq, offSeq, repSeq, lapSeq, hoSeq, incSeq, auditSeq } = data); }
 export const db = {
   categories,
   platforms,

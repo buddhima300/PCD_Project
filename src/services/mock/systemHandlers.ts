@@ -153,8 +153,8 @@ export const systemApi = {
       const used = offs.filter((o) => o.date.startsWith(TODAY.slice(0, 7))).length;
       const lap = db.laptops.find((l) => l.currentUserId === e.id || l.nextUserId === e.id) ?? null;
       return {
-        role: 'EMPLOYEE', person: { id: e.id, name: e.name, dept: e.dept, position: e.position }, platform: summarizePlatform(p), pool: poolSummary(p, e.dept),
-        shift: e.shift, nextShift, currentWindow: shiftWindow(TODAY, e.shift), nextWindow: shiftWindow(next, nextShift), workstation: lap, handovers: myHandovers,
+        role: 'EMPLOYEE', person: { id: e.id, name: e.name, dept: e.dept, position: e.position }, platform: p ? summarizePlatform(p) : null, pool: p ? poolSummary(p, e.dept) : null,
+        shift: p ? e.shift : null, nextShift: p ? nextShift : null, currentWindow: p ? shiftWindow(TODAY, e.shift) : null, nextWindow: p ? shiftWindow(next, nextShift) : null, workstation: lap, handovers: myHandovers,
         upcomingOffDays: offs.filter((o) => o.date > TODAY).sort((x, y) => x.date.localeCompare(y.date)), offDaysRemaining: Math.max(0, OFFDAY_MONTHLY_ALLOWANCE - used), offDaysUsed: used,
         plannedCover: db.replacements.filter((r) => r.absentEmployeeId === e.id && r.date >= TODAY && r.status !== 'CANCELLED'), assignments: [], currentAssignment: null,
         workloadUsed: 0, workloadLimit: 0, availability: [], rotation
@@ -172,7 +172,7 @@ export const systemApi = {
       shift: current?.shift ?? null, nextShift: assignments[1]?.shift ?? null, currentWindow: current ? { start: current.shiftStart, end: current.shiftEnd } : null,
       nextWindow: assignments[1] ? { start: assignments[1].shiftStart, end: assignments[1].shiftEnd } : null, workstation: lap, handovers: myHandovers,
       upcomingOffDays: [], offDaysRemaining: 0, offDaysUsed: 0, plannedCover: [], assignments, currentAssignment: current, workloadUsed: fl.workloadUsed, workloadLimit: WORKLOAD_LIMIT,
-      availability: Array.from({ length: 7 }, (_, i) => plusDays(TODAY, i)).map((d) => ({ date: d, ...db.availability[f.id][d] })), rotation
+      availability: Array.from({ length: 7 }, (_, i) => plusDays(TODAY, i)).map((d) => ({ date: d, ...(db.availability[f.id]?.[d] ?? { MORNING:'UNAVAILABLE' as const, NIGHT:'UNAVAILABLE' as const }) })), rotation
     };
   }),
 

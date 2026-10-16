@@ -8,9 +8,10 @@ import { MyWorkstation } from '../../pages/resources/MyWorkstation';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { api } from '../../services/api';
 import type { Handover } from '../../types/domain';
+vi.mock('../../services/api', () => import('../../services/mock/testFacade'));
 
-beforeEach(() => { useSessionStore.getState().signIn({ id: 'EMP-IN', name: 'Incoming', role: 'EMPLOYEE', title: 'Agent', email: 'incoming@example.com' }); });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); useSessionStore.getState().signOut(); });
+beforeEach(() => { useSessionStore.getState().signIn({ id: 'EMP-IN', name: 'Incoming', role: 'EMPLOYEE', title: 'Agent', email: 'incoming@example.com' }); vi.spyOn(useSessionStore.getState(),'signOut').mockImplementation(async()=>useSessionStore.getState().clear()); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); useSessionStore.getState().clear(); });
 function renderWorker(element: React.ReactNode, qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/my/workstation']}><Routes><Route path="/my/workstation" element={element} /><Route path="/login" element={<p>Next worker sign-in</p>} /></Routes></MemoryRouter></QueryClientProvider>); return qc;
 }

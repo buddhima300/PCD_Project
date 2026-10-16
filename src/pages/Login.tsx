@@ -5,13 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRightIcon, BriefcaseIcon, ShieldCheckIcon, UserRoundCogIcon, LockIcon, MailIcon, EyeIcon, EyeOffIcon, CheckIcon, HelpCircleIcon, PauseIcon, PlayIcon, TriangleAlertIcon, SparklesIcon } from 'lucide-react';
+import { ArrowRightIcon, BriefcaseIcon, ShieldCheckIcon, UserRoundCogIcon, LockIcon, MailIcon, EyeIcon, EyeOffIcon, HelpCircleIcon, PauseIcon, PlayIcon, TriangleAlertIcon, SparklesIcon } from 'lucide-react';
 import { BrandLogo } from '../components/layout/BrandLogo';
 import { Dialog } from '../components/ui/Dialog';
-import { demoUsers } from '../data/reference';
-import { roleLabels } from '../data/navigation';
 import { useSessionStore } from '../hooks/useSessionStore';
-import { api, errorMessage } from '../services/api';
+import { errorMessage } from '../services/api';
+import { login as serverLogin } from '../services/http';
 import type { Role } from '../types/domain';
 
 const schema = z.object({
@@ -37,31 +36,22 @@ export function Login() {
   const [rememberEmail, setRememberEmail] = useState(Boolean(savedEmail));
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<Role>(() => demoUsers.find(account => account.email === savedEmail)?.role ?? 'SUPERVISOR');
+  const selectedRole: Role = 'SUPERVISOR';
   const [showHelp, setShowHelp] = useState(false);
   const isAnimated = motionEnabled && !reducedMotion;
-  const { register, handleSubmit, setValue, watch, formState } = useForm<FormValues>({
-    resolver: zodResolver(schema), defaultValues: { email: switchingWorker ? '' : savedEmail || demoUsers[0]?.email || '', password: switchingWorker ? '' : 'demo-password' },
+  const { register, handleSubmit, formState } = useForm<FormValues>({
+    resolver: zodResolver(schema), defaultValues: { email: switchingWorker ? '' : savedEmail, password: '' },
   });
-  const currentEmail = watch('email');
-  const activeDemoUser = demoUsers.find(account => account.email.toLowerCase() === currentEmail.trim().toLowerCase());
   const welcome = roleConfig[selectedRole];
   const login = useMutation({
-    mutationFn: (values: FormValues) => api.login(values.email, values.password),
-    onSuccess: (account, values) => {
+    mutationFn: (values: FormValues) => serverLogin(values.email, values.password),
+    onSuccess: (session, values) => {
       if (rememberEmail) localStorage.setItem('portcity-login-email', values.email.trim());
       else localStorage.removeItem('portcity-login-email');
-      signIn(account);
-      navigate(switchingWorker && account.role !== 'SUPERVISOR' ? '/my/workstation' : '/');
+      signIn(session.user, session.permissions);
+      navigate('/');
     },
   });
-  const selectAccount = (account: typeof demoUsers[number]) => {
-    setSelectedRole(account.role);
-    setValue('email', account.email, { shouldValidate: true });
-    setValue('password', 'demo-password', { shouldValidate: true });
-    login.reset();
-  };
-  const selectRole = (role: Role) => { const account = demoUsers.find(candidate => candidate.role === role); if (account) selectAccount(account); };
   if (user) return <Navigate to="/" replace />;
 
   return <div className="login-page login-experience" data-motion={isAnimated ? 'running' : 'paused'}>
@@ -108,24 +98,12 @@ export function Login() {
             <span>{login.isPending ? 'Signing in…' : 'Login'}</span>{login.isPending ? <span className="login-loading-ring" aria-hidden /> : <ArrowRightIcon className="h-4 w-4" aria-hidden />}
           </motion.button>
         </form>
-        <div className="login-demo-divider"><span />Explore a demo workspace<span /></div>
-        <div className="login-role-grid" role="group" aria-label="Demo workspace">
-          {(['SUPERVISOR', 'EMPLOYEE', 'FREELANCER'] as const).map(role => { const Icon = roleConfig[role].icon; const selected = activeDemoUser?.role === role; return <button type="button" key={role} className="login-role" data-selected={selected} disabled={login.isPending} aria-label={`Use ${roleLabels[role]} demo account`} aria-pressed={selected} onClick={() => selectRole(role)}>
-            {selected && <motion.span className="login-role-highlight" layoutId={isAnimated ? 'login-role-selection' : undefined} transition={{ type: 'spring', stiffness: 400, damping: 35 }} />}
-            <Icon className="h-5 w-5" aria-hidden /><span>{role === 'EMPLOYEE' ? 'Employee' : roleLabels[role]}</span>{selected && <CheckIcon className="login-role-check h-3 w-3" aria-hidden />}
-          </button>; })}
-        </div>
-        <div className="login-demo-preview" aria-live="polite">
-          {activeDemoUser ? <><div className="min-w-0"><p className="truncate text-xs font-semibold">{activeDemoUser.name}</p><p className="mt-1 text-[11px] text-ink-muted">{roleConfig[activeDemoUser.role].hint}</p></div><button type="button" className="login-quick-signin" disabled={login.isPending} onClick={() => login.mutate({ email: activeDemoUser.email, password: 'demo-password' })}>Quick Sign-in <ArrowRightIcon className="h-3 w-3" aria-hidden /></button></> : <p className="text-xs text-ink-muted">Use your work credentials, or choose a demo workspace above.</p>}
-        </div>
         <p className="login-access-note">Need access? <button type="button" onClick={() => setShowHelp(true)}>We’ll help you get started.</button></p>
       </motion.section>
     </main>
     <footer className="login-footer"><span>People. Coverage. Clarity.</span><span>PortCity Digital · Your connected workspace</span></footer>
     <Dialog open={showHelp} onClose={() => setShowHelp(false)} title="Platform Access & Credentials" description="A little help getting started" footer={<button type="button" className="rounded-lg border border-line px-4 py-2 text-sm" onClick={() => setShowHelp(false)}>Close</button>}>
-      <p className="mb-5 text-sm leading-relaxed text-ink-muted">For a work account or password reset, contact your supervisor. This environment also includes demo accounts so you can explore each workspace.</p>
-      <ul className="space-y-3">{demoUsers.map(account => <li key={account.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line p-3"><div className="min-w-0"><p className="text-sm font-medium">{account.name} · {roleLabels[account.role]}</p><p className="mt-1 break-all text-xs text-ink-muted">{account.email}</p></div><button type="button" className="rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary" aria-label={`Use ${account.name} demo account`} onClick={() => { selectAccount(account); setShowHelp(false); }}>Use {account.role === 'EMPLOYEE' ? 'Employee' : roleLabels[account.role]} demo</button></li>)}</ul>
-      <p className="mt-5 text-xs text-ink-subtle">Demo password: demo-password. Choosing a workspace fills the form; sign in when you’re ready.</p>
+      <p className="text-sm leading-relaxed text-ink-muted">Sign in with the account created by your administrator. Your account determines your workspace and access. Contact an account administrator if you need access or password assistance.</p>
     </Dialog>
   </div>;
 }

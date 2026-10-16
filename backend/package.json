@@ -1,0 +1,35 @@
+{
+  "name": "pcd-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --env-file=.env --watch src/server.js",
+    "start": "node --env-file=.env src/server.js",
+    "migrate": "node --env-file=.env scripts/migrate.js",
+    "data:import": "node --env-file=.env scripts/import-operations.js",
+    "data:reset": "node --env-file=.env scripts/import-operations.js --reset",
+    "bootstrap": "node --env-file=.env scripts/bootstrap.js",
+    "supervisor:create": "node --env-file=.env scripts/create-supervisor.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "test:frontend": "node tests/operations-frontend.e2e.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "esbuild": "^0.21.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.3",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.10"
+  }
+}

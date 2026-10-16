@@ -338,8 +338,17 @@ export const placementApi = {
       const cand = db.candidates.find((c) => c.id === input.workerId);
 
       if (cand) {
+        if (cand.status === 'PLACED') throw new ApiError('CONFLICT', 'This candidate has already been placed.', 409);
+        if ((cand.employmentType === 'PERMANENT' ? 'PERMANENT' : 'FREELANCER') !== input.workerType || cand.dept !== input.dept) throw new ApiError('WORKER_MISMATCH', 'Placement must match the registered department and employment type.', 422);
         cand.status = 'PLACED';
-        if (input.workerType === 'PERMANENT') {
+        if (cand.registeredWorkerId) {
+          const worker = input.workerType === 'PERMANENT' ? db.employees.find(record => record.id === cand.registeredWorkerId) : db.freelancers.find(record => record.id === cand.registeredWorkerId);
+          if (!worker) throw new ApiError('NOT_FOUND', 'The registered staff record is missing.', 404);
+          finalWorkerId = worker.id; finalWorkerName = worker.name;
+          Object.assign(worker, { lifecycle:'IN_PLATFORM_TRAINING', qualifiedForProduction:false, positionCode:pos.positionCode });
+          if (input.workerType === 'PERMANENT') Object.assign(worker, { platformCode:input.platformCode, categoryCode:platform.categoryCode, poolId, slot:pos.slot, shift:input.shift, nextShift:input.shift === 'MORNING' ? 'NIGHT' : 'MORNING', currentWorkstationId:pos.workstationId, workstationState:'IN_USE' });
+          else Object.assign(worker, { currentPlatform:input.platformCode, compatibleCategories:[platform.categoryCode], compatiblePlatforms:[input.platformCode] });
+        } else if (input.workerType === 'PERMANENT') {
           finalWorkerId = `EMP-${pad(Math.floor(1050 + Math.random() * 8900), 5)}`;
           finalWorkerName = cand.name;
           db.employees.push({

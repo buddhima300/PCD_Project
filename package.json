@@ -9,6 +9,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "verify:disciplinary": "node scripts/verify-disciplinary.mjs",
     "test:breaks": "vitest run --config vitest.config.ts",
+    "test:backend": "vitest run --config vitest.backend.config.ts",
     "test:breaks:e2e": "playwright test --config playwright.config.ts",
     "typecheck": "tsc --noEmit",
     "preview": "npx vite preview"

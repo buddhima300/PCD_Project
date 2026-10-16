@@ -47,8 +47,8 @@ function save() { if (typeof localStorage !== 'undefined') localStorage.setItem(
 export function resetBreakDemo() { state = undefined; if (typeof localStorage !== 'undefined') localStorage.removeItem(STORAGE); breakScenarios.offline = false; breakScenarios.uncertain = false; breakScenarios.malformed = false; breakScenarios.disabled = false; breakScenarios.unresolved = false; breakScenarios.shift = 'MORNING'; breakScenarios.revoked.clear(); }
 function access() { const a = currentAuth(); if (breakScenarios.disabled) throw new BreakError('DISABLED', 'Break Management was disabled.'); if (breakScenarios.revoked.has(a.userId)) throw new BreakError('FORBIDDEN', 'Your break access has been revoked.', 403); return a; }
 // Explicit fixture grants, separate from global monitoring. These are not new production permission names.
-function actionScope(workerId: string) { return access().role === 'SUPERVISOR' && ['USR-SUP-001', 'USR-MGR-014'].includes(access().userId) && ['EMP-00421', 'FL-00124'].includes(workerId); }
-function policyAccess() { return access().role === 'SUPERVISOR' && access().userId === 'USR-SUP-001'; }
+function actionScope(workerId: string) { const a = access(); return a.role === 'SUPERVISOR' && (a.permissions ? a.permissions.some(p => ['breaks.review','attendance.correct'].includes(p)) : ['USR-SUP-001', 'USR-MGR-014'].includes(a.userId) && ['EMP-00421', 'FL-00124'].includes(workerId)); }
+function policyAccess() { const a = access(); return a.role === 'SUPERVISOR' && (a.permissions ? a.permissions.includes('breaks.policy') : a.userId === 'USR-SUP-001'); }
 function effectivePolicy() { return load().policies.filter(p => Date.parse(p.effectiveAt) <= now()).sort((a, b) => Date.parse(b.effectiveAt) - Date.parse(a.effectiveAt) || b.version - a.version)[0] ?? basePolicy; }
 function tick() {
   const s = load();
@@ -90,8 +90,8 @@ function snapshot() {
   const requests = load().requests.filter(r => a.role === 'SUPERVISOR' || r.workerId === a.userId).map(presentRequest);
   const remaining = Math.max(0, policy.allowanceMinutes * 60 - consumed);
   const approved = requests.find(r => r.workerId === a.userId && r.status === 'Approved' && r.shiftDate === shift.date && Date.parse(r.expiresAt) > now());
-  const assigned = !!worker && now() >= shift.start && now() < shift.end;
-  return { available: true, capabilities: { view: true, monitor: a.role === 'SUPERVISOR', policy: policyAccess(), export: a.role === 'SUPERVISOR' && ['USR-SUP-001', 'USR-MGR-014'].includes(a.userId) }, serverNow: iso(now()), timezone: 'Asia/Colombo', policy, policyHistory: load().policies, notices: policy.version > 1 ? [`Policy v${policy.version} effective ${policy.effectiveAt}: allowance ${policy.allowanceMinutes} minutes. Existing events remain unchanged.`] : [], shift: worker ? { code: breakScenarios.shift, date: shift.date, startsAt: iso(shift.start), endsAt: iso(shift.end), department: worker.dept, platform: 'platformCode' in worker ? worker.platformCode : worker.currentPlatform ?? 'Unassigned' } : null, allowance: worker ? { totalSeconds: policy.allowanceMinutes * 60, consumedSeconds: consumed, remainingSeconds: remaining } : null, active, history: sessions.slice(0, 100), requests: requests.slice(0, 100), actions: { start: assigned && !active && (remaining > 0 || !!approved), end: !!active && active.status === 'ACTIVE', request: assigned && remaining === 0 && !active && !requests.some(r => r.status === 'Pending' && r.shiftDate === shift.date), restriction: !assigned ? 'No active scheduled demo assignment.' : active ? 'An existing session must be ended or corrected first.' : remaining === 0 && !approved ? 'Allowance exhausted. An approved extra break is required.' : '' } };
+  const assigned = !!worker && (a.permissions === undefined || ('platformCode' in worker ? !!worker.platformCode : !!worker.currentPlatform)) && now() >= shift.start && now() < shift.end;
+  return { available: true, capabilities: { view: true, monitor: a.role === 'SUPERVISOR', policy: policyAccess(), export: a.role === 'SUPERVISOR' && (a.permissions ? a.permissions.includes('reports.export') : ['USR-SUP-001', 'USR-MGR-014'].includes(a.userId)) }, serverNow: iso(now()), timezone: 'Asia/Colombo', policy, policyHistory: load().policies, notices: policy.version > 1 ? [`Policy v${policy.version} effective ${policy.effectiveAt}: allowance ${policy.allowanceMinutes} minutes. Existing events remain unchanged.`] : [], shift: worker ? { code: breakScenarios.shift, date: shift.date, startsAt: iso(shift.start), endsAt: iso(shift.end), department: worker.dept, platform: 'platformCode' in worker ? worker.platformCode : worker.currentPlatform ?? 'Unassigned' } : null, allowance: worker ? { totalSeconds: policy.allowanceMinutes * 60, consumedSeconds: consumed, remainingSeconds: remaining } : null, active, history: sessions.slice(0, 100), requests: requests.slice(0, 100), actions: { start: assigned && !active && (remaining > 0 || !!approved), end: !!active && active.status === 'ACTIVE', request: assigned && remaining === 0 && !active && !requests.some(r => r.status === 'Pending' && r.shiftDate === shift.date), restriction: !assigned ? 'No active scheduled demo assignment.' : active ? 'An existing session must be ended or corrected first.' : remaining === 0 && !approved ? 'Allowance exhausted. An approved extra break is required.' : '' } };
 }
 function filtered(f: BreakFilters) {
   access(); if (access().role !== 'SUPERVISOR') throw new BreakError('FORBIDDEN', 'Operational monitoring requires supervisor visibility.', 403);
@@ -114,6 +114,8 @@ function notify(workerId: string, title: string, supervisors = false) {
 }
 async function respond<T>(fn: () => T, signal?: AbortSignal): Promise<T> { await new Promise(resolve => setTimeout(resolve, 40)); if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); if (breakScenarios.offline) throw new BreakError('NETWORK', 'Demo connection failed. No confirmed changes are available.', 0, true); access(); return structuredClone(fn()); }
 const jobs = new Map<string, BreakExport>();
+export function exportBreakState() { return { ...load(), jobs: [...jobs.entries()] }; }
+export function importBreakState(data: ReturnType<typeof exportBreakState>) { state = { sessions: data.sessions, requests: data.requests, policies: data.policies, keys: data.keys }; jobs.clear(); for (const [key, value] of data.jobs ?? []) jobs.set(key, value); }
 function audit(action: string, target: string, previous: string, next: string, reason = '') { const a = access(); db.audit.unshift({ id: `AUD-BREAK-${crypto.randomUUID()}`, at: iso(now()), actorId: a.userId, actorName: a.name, role: a.role, action: `DEMO_BREAK_${action}`, entity: 'Break Management (development simulation)', entityId: target, platformCode: null, dept: null, previous, next, reason, isOverride: action === 'CORRECT' }); }
 export const mockBreakApi: BreakApi = {
   snapshot: signal => respond(() => { if (breakScenarios.malformed) throw new BreakError('INVALID_RESPONSE', 'Malformed demo response. Actions disabled.'); return snapshot(); }, signal),
@@ -169,8 +171,3 @@ export const mockBreakApi: BreakApi = {
   }),
   exportStatus: id => respond(() => { if (!snapshot().capabilities.export) throw new BreakError('FORBIDDEN', 'Export access was revoked.', 403); const job = jobs.get(id); if (!job || !id.startsWith(`${access().userId}:`)) throw new BreakError('NOT_FOUND', 'Export job unavailable.', 404); return job; }),
 };
-
-
-
-
-

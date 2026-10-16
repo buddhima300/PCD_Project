@@ -1,0 +1,31 @@
+# Original frontend workflows with PostgreSQL
+
+The original page routes, components and API signatures are restored. Authentication still uses the existing cookie sessions, users and permission grants. `src/services/api.ts` is now an HTTP facade; it no longer imports the mock database or executes domain handlers in the browser. Operational requests use POST `/api/v1/operations/workflows/{method}` with `{ "args": [...] }`. Break requests use `/api/v1/operations/breaks/{method}`. Both require the server session, trusted Origin and CSRF token, including query operations transported through POST.
+
+## Data import
+
+The development database was backed up and reset with the original frontend dataset: 392 employees, 48 freelancers, 5 categories, 27 platforms, 2,417 off-day requests, 18 replacements, 223 laptops, 498 handovers, 12 equipment incidents, 16 notifications, 33 audit records, 6 rotation cycles, 5 candidates, 207 platform positions and 3 training assignments. Disciplinary cases, break state, availability calendars and profile data are also imported. Dates and operational assumptions are preserved from the original fixtures; the main reference date is 2026-09-25. This import intentionally preserves the original data rather than generating another set of names or counts.
+
+From `backend`, use `npm run migrate`, then `npm run data:import` for a new database. `npm run data:reset` deliberately replaces existing operational data and saves a JSON backup under `backend/backups/` first. Import/reset are restricted to development/test. Users, password hashes, permission definitions, user grants, sessions and migration history are retained. Data replacement is transactional; failures roll back. Do not run reset for ordinary application startup.
+
+## Persistence and domain rules
+
+`ops_*` tables store individual domain records as ordered JSONB rows, retaining their original identifiers and exact shapes. There are dedicated tables for workforce, platforms, equipment, scheduling, recruitment, placement/training, disciplinary cases/warnings/events, breaks, availability and profile events. `ops_state` holds small module metadata, policies, counters and profile photos. Foundation tables also receive an initial compatibility projection for the older administrative APIs. The restored frontend reads and writes the `ops_*` domain tables.
+
+The backend operations module reuses the original TypeScript domain rules through a bundled, isolated server runtime. Each request loads PostgreSQL state, applies server-derived identity, checks the operation allowlist and role/grants, executes the domain operation, and saves changed records in one transaction. Module counters are persisted. A PostgreSQL advisory lock serializes cross-module changes so two requests cannot independently allocate the same resource. Each runtime has isolated memory; browser local storage is replaced by request-local storage whose contents are persisted by the service. Browser fixture state is never accepted from the client.
+
+This is a single-service implementation intended for the current dataset. It loads the operational dataset per request and serializes writes/reads that may trigger domain changes. For larger datasets, move each query to indexed SQL and each workflow to narrower transactions. JSONB preserves the existing frontend contract; it does not yet provide relational foreign keys between every operational record. External email delivery and automatic disciplinary escalation from a reviewed break remain unimplemented, as in the original workflows.
+
+## Login mappings
+
+`operational_accounts` links each real login to a unique operational worker. For the original import, links prefer an exact email match, then the original primary role fixture, then another active unlinked worker of that role. New staff registration creates its own worker and explicit login link in the same transaction; it never assigns an unrelated existing worker. Supervisors keep their real account names for actions. The server translates linked IDs in requests/responses so ownership checks in the existing components continue to match the authenticated user ID.
+
+New staff are registered from **Workforce overview → Register staff** using the original intake form. The form adds an initial password and confirmation, calls POST `/api/v1/staff/register`, and saves the candidate, operational worker, foundation worker, login and ownership link atomically. The existing `accounts.manage` permission is required. Duplicate emails or failed account creation roll back registration. The existing placement queue remains the next step; placement reuses the registered worker ID and login. Unplaced staff can sign in and view their profile, but have no assigned shift, workstation or selectable off-days yet.
+
+Staff change their own password under **My profile → Change password**, using their current password. The existing authenticated password endpoint revokes all account sessions after a successful change. The old separate registration URL forwards to the existing Register staff form, and the profile dropdown no longer launches a separate staff registration page.
+
+Open the user menu → Account management, or `/account-admin`. An account administrator can select a login and its original operational worker in **Map login to operational worker**. A worker cannot be linked to two accounts. Changing a link revokes that login's sessions so cached data cannot carry into the new mapping. No mock login or shared demo password is enabled.
+
+## Verification
+
+`npm test` in `backend` covers existing authentication plus import preservation, role/owner restrictions, persistence across fresh runtimes and module operations. `npm run test:frontend` runs the original React pages with real HTTP authentication and isolated PostgreSQL across all three roles. At the repository root, `npm run test:backend` tests the HTTP facade, and `npm run build` builds the restored routes. The repository-wide strict typecheck still has pre-existing unused-import diagnostics in the original screens; typechecking with unused diagnostics disabled passes.
