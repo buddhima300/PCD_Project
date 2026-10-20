@@ -12,7 +12,11 @@ import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { api } from '../../services/api';
 import { deptNames, fmtDate, fmtDateTime } from '../../utils/format';
 
-type Tab = 'schedule' | 'platform' | 'offdays' | 'replacements' | 'workstation' | 'audit';
+import { EmployeePlatformAction } from '../../components/placement/EmployeePlatformAction';
+import { OffDayBalance } from '../../components/offday/OffDayBalance';
+import { EmployeeCareerSummary, EmployeeCareerHistory } from '../../components/placement/EmployeeCareer';
+
+type Tab = 'schedule' | 'platform' | 'offdays' | 'replacements' | 'career' | 'audit';
 
 export function EmployeeDetail() {
   const { id = '' } = useParams();
@@ -20,7 +24,7 @@ export function EmployeeDetail() {
   const q = useQuery({ queryKey: ['employee', id], queryFn: () => api.getEmployee(id) });
   if (q.isPending) return <LoadingBlock rows={8} />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
-  const { employee: e, offDays, replacements, handovers, platformHistory, scheduleHistory, audit } = q.data;
+  const { employee: e, offDays, replacements, platformHistory, scheduleHistory, audit } = q.data;
 
   return (
     <div>
@@ -32,17 +36,17 @@ export function EmployeeDetail() {
       
       <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
         <Card className="h-fit p-5">
-          <h2 className="text-sm font-semibold">Operational assignment</h2>
+          <OffDayBalance detail={q.data} /><EmployeeCareerSummary employee={e} /><EmployeePlatformAction employee={e} /><h2 className="text-sm font-semibold">Operational assignment</h2>
           <dl className="mt-3 space-y-3 text-sm">
-            <div className="flex justify-between"><dt className="text-ink-muted">Platform</dt><dd><Link to={`/platforms/${e.platformCode}`} className="font-semibold hover:text-primary">{e.platformCode}</Link></dd></div>
-            <div className="flex justify-between"><dt className="text-ink-muted">Workforce position</dt><dd className="font-mono font-bold text-ink">{e.positionCode ?? `${e.dept}-0${(Number(e.id.slice(-2)) % 5) + 1}`}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Platform</dt><dd>{e.platformCode ? <Link to={`/platforms/${e.platformCode}`} className="font-semibold hover:text-primary">{e.platformCode}</Link> : 'Unassigned'}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Workforce position</dt><dd className="font-mono font-bold text-ink">{e.positionCode || '—'}</dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">Lifecycle</dt><dd><StatusBadge status={e.lifecycle ?? 'PRODUCTION_ACTIVE'} size="xs" /></dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">Department</dt><dd className="flex items-center gap-1.5"><DeptTag dept={e.dept} />{deptNames[e.dept]} <LockIcon className="h-3 w-3 text-ink-subtle" aria-label="Not editable" /></dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">Current shift</dt><dd><ShiftTag shift={e.shift} /></dd></div>
             <div className="flex justify-between"><dt className="text-ink-muted">From Oct 01</dt><dd><ShiftTag shift={e.nextShift} /></dd></div>
-            <div className="flex justify-between"><dt className="text-ink-muted">Workstation pool</dt><dd><Link to={`/pools/${e.poolId}`} className="font-mono text-xs hover:text-primary">{e.poolId}</Link></dd></div>
-            <div className="flex justify-between"><dt className="text-ink-muted">Workstation</dt><dd className="text-right"><IdText>{e.currentWorkstationId ?? '—'}</IdText>{e.workstationState && <span className="block text-[11px] text-ink-subtle">{e.workstationState === 'IN_USE' ? 'in use this shift' : 'scheduled tonight'}</span>}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink-muted">Off-days (Sep)</dt><dd className="tabular font-semibold">{e.offDaysUsed} / {e.offDaysAllowance}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Workstation pool</dt><dd>{e.poolId ? <Link to={`/pools/${e.poolId}`} className="font-mono text-xs hover:text-primary">{e.poolId}</Link> : 'Unassigned'}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Device currently held</dt><dd className="text-right"><IdText>{e.currentWorkstationId ?? '—'}</IdText>{e.workstationState && <span className="block text-[11px] text-ink-subtle">{e.workstationState === 'IN_USE' ? 'in use this shift' : 'scheduled tonight'}</span>}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-muted">Off-days used this month</dt><dd className="tabular font-semibold">{e.offDaysUsed} / {e.offDaysAllowance}</dd></div>
           </dl>
           <div className="mt-4 space-y-1.5 border-t border-line pt-4 text-sm text-ink-muted">
             <p className="flex items-center gap-2"><MailIcon className="h-3.5 w-3.5" /> {e.email}</p>
@@ -59,12 +63,13 @@ export function EmployeeDetail() {
             tabs={[
             { id: 'schedule', label: 'Schedule history' },
             { id: 'platform', label: 'Platform history' },
+            { id: 'career', label: 'Career history', count:e.careerHistory?.length ?? 0 },
             { id: 'offdays', label: 'Off-days', count: offDays.length },
             { id: 'replacements', label: 'Replacements', count: replacements.length },
-            { id: 'workstation', label: 'Workstation history', count: handovers.length },
             { id: 'audit', label: 'Audit', count: audit.length }]
             } />
           
+          {tab === 'career' && <EmployeeCareerHistory employee={e} />}
           {tab === 'schedule' &&
           <DataTable rows={scheduleHistory} rowKey={(r) => r.cycle} columns={[
           { key: 'cycle', header: 'Cycle', cell: (r) => <span className="font-medium">{r.cycle}</span> },
@@ -97,15 +102,6 @@ export function EmployeeDetail() {
           { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} size="xs" /> }]
           } /> :
           <EmptyState title="No replacements for this employee" />)}
-          {tab === 'workstation' && (handovers.length ?
-          <DataTable rows={handovers} rowKey={(r) => r.id} columns={[
-          { key: 'at', header: 'Scheduled', cell: (r) => fmtDateTime(r.scheduledAt) },
-          { key: 'ws', header: 'Workstation', cell: (r) => <IdText>{r.workstationId}</IdText> },
-          { key: 'asset', header: 'Laptop', cell: (r) => <Link to={`/laptops/${r.assetId}`} className="font-mono text-xs hover:text-primary">{r.assetId}</Link> },
-          { key: 'dir', header: 'Direction', cell: (r) => r.incomingId === e.id ? 'Received from ' + r.outgoingId : 'Handed to ' + r.incomingId },
-          { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} size="xs" /> }]
-          } /> :
-          <EmptyState title="No workstation history" />)}
           {tab === 'audit' && (audit.length ?
           <DataTable rows={audit} rowKey={(r) => r.id} columns={[
           { key: 'at', header: 'Timestamp', cell: (r) => fmtDateTime(r.at) },

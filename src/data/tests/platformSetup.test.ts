@@ -49,31 +49,46 @@ describe('platform setup business workflow', () => {
     await expect(platformApi.updatePlatformConfig('TEST-1', { departments: { DP: 2 }, status: 'ACTIVE', reason: 'Activate it' })).rejects.toMatchObject({ code: 'VALIDATION' });
   });
   it('counts training seats separately and blocks duplicate placement and capacity reduction', async () => {
-    await create(); await setup.configurePlatformCapacity('TEST-1', capacity(1));
+    await create(); await setup.configurePlatformCapacity('TEST-1', capacity(1)); await setup.activatePlatform('TEST-1');
     const p = await setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'MORNING', trainingDays: 1 });
     expect(p.morningWorkforce).toBe(0); expect(p.requiredWorkforce).toBe(1); expect(db.trainingAssignments[0].completedTrainingDays).toBe(0);
     await expect(setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'NIGHT' })).rejects.toMatchObject({ code: 'ASSIGNMENT_CONFLICT' });
     await expect(setup.configurePlatformCapacity('TEST-1', { departments: { WD: 1 }, staffingTargets: { WD: { MORNING: 0, NIGHT: 0 } } })).rejects.toMatchObject({ code: 'CAPACITY_CONFLICT' });
   });
   it('requires completed training and separate promotion on an active platform', async () => {
-    await create(); await setup.configurePlatformCapacity('TEST-1', capacity()); await setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'MORNING', trainingDays: 1 });
+    await create(); await setup.configurePlatformCapacity('TEST-1', capacity()); await setup.activatePlatform('TEST-1'); await setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'MORNING', trainingDays: 1 });
     const t = db.trainingAssignments[0];
     await expect(placementApi.evaluateTraining(t.id, evaluation)).rejects.toMatchObject({ code: 'VALIDATION' });
     await placementApi.logTrainingProgress(t.id, 1);
     await expect(placementApi.logTrainingProgress(t.id, 1)).rejects.toMatchObject({ code: 'VALIDATION' });
     await placementApi.evaluateTraining(t.id, evaluation);
     expect((await platformApi.getPlatform('TEST-1')).platform.morningWorkforce).toBe(0);
-    await expect(setup.promotePlatformTrainee(t.id)).rejects.toMatchObject({ code: 'VALIDATION' });
-    await setup.activatePlatform('TEST-1'); await setup.promotePlatformTrainee(t.id);
+    await setup.promotePlatformTrainee(t.id);
     expect((await platformApi.getPlatform('TEST-1')).platform.morningWorkforce).toBe(1);
     await expect(setup.promotePlatformTrainee(t.id)).rejects.toMatchObject({ code: 'VALIDATION' });
     expect((await placementApi.listPlatformDemands()).find(d => d.platformCode === 'TEST-1')?.vacancy).toBe(0);
   });
+  it('allows sequential future-day advancement without permitting skipped days or premature qualification', async () => {
+    await create(); await setup.configurePlatformCapacity('TEST-1', capacity()); await setup.activatePlatform('TEST-1');
+    await setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'MORNING', trainingDays: 5 });
+    const t = db.trainingAssignments[0];
+    await placementApi.logTrainingProgress(t.id, 1);
+    await expect(placementApi.logTrainingProgress(t.id, 3)).rejects.toMatchObject({ code: 'VALIDATION' });
+    await placementApi.logTrainingProgress(t.id, 2);
+    expect(t.completedTrainingDays).toBe(2);
+    await expect(placementApi.logTrainingProgress(t.id, 2)).rejects.toMatchObject({ code: 'VALIDATION' });
+    await expect(placementApi.evaluateTraining(t.id, evaluation)).rejects.toMatchObject({ code: 'VALIDATION' });
+  });
   it('extends training with new scheduled days and preserves state on invalid extension', async () => {
-    await create(); await setup.configurePlatformCapacity('TEST-1', capacity()); await setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'MORNING', trainingDays: 1 });
+    await create(); await setup.configurePlatformCapacity('TEST-1', capacity()); await setup.activatePlatform('TEST-1'); await setup.assignPlatformWorker('TEST-1', { workerId: 'CND-TEST', kind: 'TRAINING', dept: 'DP', shift: 'MORNING', trainingDays: 1 });
     const t = db.trainingAssignments[0];
     await expect(placementApi.evaluateTraining(t.id, { ...evaluation, result: 'EXTEND', extensionDays: -1 })).rejects.toMatchObject({ code: 'VALIDATION' }); expect(t.evaluation).toBeNull();
-    await placementApi.logTrainingProgress(t.id, 1); await placementApi.evaluateTraining(t.id, { ...evaluation, result: 'EXTEND', extensionDays: 2 }); expect(t.dailyLogs).toHaveLength(3); await placementApi.logTrainingProgress(t.id, 2); expect(t.completedTrainingDays).toBe(2);
+    await placementApi.logTrainingProgress(t.id, 1);
+    await placementApi.evaluateTraining(t.id, { ...evaluation, result: 'EXTEND', extensionDays: 2 });
+    expect(t.dailyLogs).toHaveLength(3);
+    expect(t.dailyLogs[1].date > t.dailyLogs[0].date).toBe(true);
+    await placementApi.logTrainingProgress(t.id, 2);
+    expect(t.completedTrainingDays).toBe(2);
   });
   it('restricts creation and configuration to supervisors', async () => {
     await create(); setAuthContext({ role: 'EMPLOYEE', userId: 'EMP-TEST', name: 'Employee' });

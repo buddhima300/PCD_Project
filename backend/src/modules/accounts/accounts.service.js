@@ -51,7 +51,7 @@ export function accountsService(db) {
           const worker = (await client.query('SELECT status FROM workers WHERE user_id=$1', [id])).rows[0];
           if (worker && ['SUSPENDED', 'INACTIVE'].includes(worker.status)) throw new ApiError(409, 'WORKER_INACTIVE', 'Reactivate the worker before unlocking the account.');
         }
-        await client.query('UPDATE users SET status=$1,updated_at=now() WHERE id=$2', [input.status, id]);
+        await client.query("UPDATE users SET status=$1,access_revision=access_revision+1,access_changed_at=now(),access_changed_by=$3,access_change_reason='Account administrator updated access',updated_at=now() WHERE id=$2", [input.status, id, actor.id]);
         if (input.permissions) {
           await client.query('DELETE FROM user_permissions WHERE user_id=$1', [id]);
           for (const permission of new Set(input.permissions)) await client.query('INSERT INTO user_permissions(user_id,permission) VALUES($1,$2)', [id, permission]);

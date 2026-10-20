@@ -5,6 +5,7 @@ import type { PlatformSummary, ShiftCode } from '../../types/domain';
 import { cn } from '../../utils/cn';
 import { CapacityMeter } from '../ui/CapacityMeter';
 import { StatusBadge } from '../ui/StatusBadge';
+import { AllocationBars } from './AllocationBars';
 
 interface PlatformCardProps {
   platform: PlatformSummary;
@@ -15,12 +16,14 @@ interface PlatformCardProps {
 export function PlatformCard({ platform: p, mode = 'live' }: PlatformCardProps) {
   const used = (o: PlatformSummary['occupancy'][number]) => mode === 'live' ? o.occupiedNow : mode === 'MORNING' ? o.morning : o.night;
   const total = p.occupancy.reduce((s, o) => s + used(o), 0);
+  const shift = mode === 'live' ? p.equipmentShift ?? 'MORNING' : mode;
+  const status = p.shiftStatuses?.[shift] ?? p.opStatus;
   return (
     <Link
       to={`/platforms/${p.code}`}
       className={cn(
         'app-panel flex h-full flex-col rounded-3xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl transition-[box-shadow,border-color] duration-150 hover:border-primary-200 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-        p.opStatus === 'INCIDENT' ? 'border-danger-100' : p.opStatus === 'WARNING' ? 'border-warning-100' : 'border-line',
+        ['INCIDENT','CONFLICT','EQUIPMENT_SHORTAGE'].includes(status) ? 'border-danger-100' : ['WARNING','NEEDS_ALLOCATION','STAFFING_GAP'].includes(status) ? 'border-warning-100' : 'border-line',
         p.status !== 'ACTIVE' && 'opacity-70'
       )}>
       <div className="flex items-start justify-between gap-2">
@@ -30,11 +33,11 @@ export function PlatformCard({ platform: p, mode = 'live' }: PlatformCardProps) 
             {p.categoryCode} · {p.occupancy.length} depts · {p.totalWorkstations} seats
           </p>
         </div>
-        <StatusBadge status={p.opStatus} size="xs" />
+        <StatusBadge status={status} size="xs" />
       </div>
       <div className="mt-3 space-y-2">
         {p.occupancy.map((o) =>
-        <CapacityMeter key={o.dept} label={o.dept} used={used(o)} capacity={o.capacity} pending={mode === 'live' ? o.handoverPending : 0} />
+        o.coverage ? <AllocationBars key={o.dept} label={o.dept} coverage={o.coverage[shift]} /> : <CapacityMeter key={o.dept} label={o.dept} used={used(o)} capacity={o.capacity} />
         )}
       </div>
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-3 text-[11px] text-ink-muted">
@@ -52,11 +55,7 @@ export function PlatformCard({ platform: p, mode = 'live' }: PlatformCardProps) 
             {p.activeIncidents}
             <span className="sr-only">open incidents</span>
           </span>
-          <span className="inline-flex items-center gap-1" title="Handovers pending">
-            <ArrowLeftRightIcon className="h-3 w-3" aria-hidden />
-            {p.pendingHandovers}
-            <span className="sr-only">handovers pending</span>
-          </span>
+
         </span>
       </div>
     </Link>);

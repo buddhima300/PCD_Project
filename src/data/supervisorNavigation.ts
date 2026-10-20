@@ -1,4 +1,4 @@
-import { ActivityIcon, BarChart3Icon, CalendarDaysIcon, LaptopIcon, LayoutDashboardIcon, UsersIcon } from 'lucide-react';
+import { ActivityIcon, BarChart3Icon, CalendarDaysIcon, LaptopIcon, LayoutDashboardIcon, UsersIcon, ServerIcon } from 'lucide-react';
 import { legacyNavByRole, type NavItem } from './navigation';
 import type { BreakSnapshot } from '../features/break-management/contracts';
 import type { Role } from '../types/domain';
@@ -12,10 +12,9 @@ export interface SupervisorArea extends NavItem {
 // Existing route guards remain authoritative. These areas organize supervisor-only routes.
 export const supervisorAreas: SupervisorArea[] = [
   { id: 'dashboard', label: 'Dashboard', to: '/', icon: LayoutDashboardIcon, description: 'Your current operational overview.', routes: ['/'] },
-  { id: 'workforce', label: 'Workforce', to: '/workforce', icon: UsersIcon, description: 'Find workforce records, manage recruitment and placement, and review training.', routes: ['/workforce', '/employees', '/freelancers', '/departments', '/positions', '/candidates', '/register', '/placement-queue', '/platform-demand', '/training'] },
-  { id: 'scheduling', label: 'Scheduling', to: '/scheduling', icon: CalendarDaysIcon, description: 'Plan coverage with the roster, shift definitions, rotation history and off-day approvals.', routes: ['/roster', '/shifts', '/rotation', '/off-days'] },
-  { id: 'operations', label: 'Operations', to: '/supervisor-operations', icon: ActivityIcon, description: 'Review live platform operations, coordinate replacements, monitor breaks and manage conduct cases.', routes: ['/operations', '/replacements', '/breaks', '/disciplinary'] },
-  { id: 'equipment', label: 'Equipment', to: '/equipment', icon: LaptopIcon, description: 'Review platform capacity, shared workstations, laptops and equipment incidents.', routes: ['/platforms', '/categories', '/platform-config', '/capacity', '/pools', '/laptops', '/incidents'] },
+  { id: 'workforce', label: 'Workforce', to: '/workforce', icon: UsersIcon, description: 'Register staff, manage training, assign qualified people, and manage daily workforce needs.', routes: ['/workforce', '/register', '/candidates', '/training', '/workforce/assignments', '/placement-queue', '/employees', '/freelancers', '/breaks', '/breaks/reports', '/breaks/policy', '/disciplinary', '/off-days', '/replacements', '/scheduling', '/roster', '/shifts', '/rotation'] },
+  { id: 'platforms', label: 'Platforms', to: '/platforms', icon: ServerIcon, description: 'Create platforms and manage categories, configuration and device capacity.', routes: ['/platforms', '/categories', '/platform-config', '/capacity', '/platform-demand', '/departments', '/positions', '/operations', '/supervisor-operations'] },
+  { id: 'equipment', label: 'Equipment', to: '/equipment', icon: LaptopIcon, description: 'Manage shared device inventory, pools and equipment incidents.', routes: ['/pools', '/laptops', '/incidents'] },
   { id: 'insights', label: 'Insights & Tools', to: '/insights', icon: BarChart3Icon, description: 'Review reports, audit activity and notifications, or open system settings.', routes: ['/reports', '/audit', '/notifications', '/settings', '/profile'] },
 ];
 
@@ -38,8 +37,8 @@ export function visibleNavigation(items: NavItem[], role: Role, snapshot?: Break
 }
 
 export function areaLinks(area: SupervisorArea, snapshot?: BreakSnapshot) {
-  const items = legacyNavByRole.SUPERVISOR.filter(item => area.routes.includes(item.to) && item.to !== area.to);
-  if (area.id === 'operations') {
+  const items = legacyNavByRole.SUPERVISOR.filter(item => area.routes.includes(item.to) && item.to !== area.to).sort((a,b) => area.routes.indexOf(a.to)-area.routes.indexOf(b.to));
+  if (area.id === 'workforce') {
     items.push({ label: 'Break history & reports', to: '/breaks/reports', icon: CalendarDaysIcon, group: 'Breaks' });
     items.push({ label: 'Break policy', to: '/breaks/policy', icon: ActivityIcon, group: 'Breaks' });
   }

@@ -29,7 +29,7 @@ const Freelancers = named(() => import('./pages/workforce/Freelancers'), 'Freela
 const FreelancerDetail = named(() => import('./pages/workforce/FreelancerDetail'), 'FreelancerDetail');
 const RegisterWizard = named(() => import('./pages/workforce/RegisterWizard'), 'RegisterWizard');
 const Candidates = named(() => import('./pages/recruitment/Candidates'), 'Candidates');
-const PlacementQueue = named(() => import('./pages/workforce/PlacementQueue'), 'PlacementQueue');
+const WorkforceAssignments = named(() => import('./pages/workforce/WorkforceAssignments'), 'WorkforceAssignments');
 const PlatformDemand = named(() => import('./pages/platforms/PlatformDemand'), 'PlatformDemand');
 const PlatformTraining = named(() => import('./pages/training/PlatformTraining'), 'PlatformTraining');
 const Shifts = named(() => import('./pages/scheduling/Shifts'), 'Shifts');
@@ -46,7 +46,6 @@ const WorkstationPools = named(() => import('./pages/resources/WorkstationPools'
 const PoolDetail = named(() => import('./pages/resources/PoolDetail'), 'PoolDetail');
 const Laptops = named(() => import('./pages/resources/Laptops'), 'Laptops');
 const LaptopDetail = named(() => import('./pages/resources/LaptopDetail'), 'LaptopDetail');
-const Handover = named(() => import('./pages/resources/Handover'), 'Handover');
 const Incidents = named(() => import('./pages/resources/Incidents'), 'Incidents');
 const ReportIssue = named(() => import('./pages/resources/ReportIssue'), 'ReportIssue');
 const MyWorkstation = named(() => import('./pages/resources/MyWorkstation'), 'MyWorkstation');
@@ -81,8 +80,8 @@ export function App() {
             <Route index element={<DashboardHome />} />
             <Route path="account-security" element={<Navigate to="/profile#password" replace />} />
             <Route path="account-admin/*" element={g(SUP, <BackendWorkspace />)} />
-            <Route path="scheduling" element={g(SUP, <SupervisorHub />)} />
-            <Route path="supervisor-operations" element={g(SUP, <SupervisorHub />)} />
+            <Route path="scheduling" element={g(SUP, <Navigate to="/roster" replace />)} />
+            <Route path="supervisor-operations" element={g(SUP, <Navigate to="/operations" replace />)} />
             <Route path="equipment" element={g(SUP, <SupervisorHub />)} />
             <Route path="insights" element={g(SUP, <SupervisorHub />)} />
             <Route path="operations" element={g(SUP, <PlatformOperations />)} />
@@ -96,7 +95,8 @@ export function App() {
             <Route path="departments" element={g(SUP, <Departments />)} />
             <Route path="positions" element={<Navigate to="/departments?tab=positions" replace />} />
             <Route path="candidates" element={g(SUP, <Candidates />)} />
-            <Route path="placement-queue" element={g(SUP, <PlacementQueue />)} />
+            <Route path="placement-queue" element={g(SUP, <Navigate to="/candidates" replace />)} />
+            <Route path="workforce/assignments" element={g(SUP, <WorkforceAssignments />)} />
             <Route path="platform-demand" element={g(SUP, <PlatformDemand />)} />
             <Route path="training" element={g(SUP, <PlatformTraining />)} />
             <Route path="workforce" element={g(SUP, <WorkforceOverview />)} />
@@ -106,6 +106,7 @@ export function App() {
             <Route path="freelancers/:id" element={g(SUP, <FreelancerDetail />)} />
             <Route path="register" element={g(SUP, <RegisterWizard />)} />
             <Route path="shifts" element={g(SUP, <Shifts />)} />
+            <Route path="handovers" element={g(SUP, <Navigate to="/equipment" replace />)} />
             <Route path="rotation" element={g(SUP, <Rotation />)} />
             <Route path="roster" element={g(SUP, <Roster />)} />
             <Route path="off-days" element={g(SUP, <OffDays />)} />
@@ -131,7 +132,7 @@ export function App() {
             <Route path="my/availability" element={g(['FREELANCER'], <MyAvailability />)} />
             <Route path="my/assignments" element={g(['FREELANCER'], <MyAssignments />)} />
             <Route path="my/workstation" element={g(STAFF, <MyWorkstation />)} />
-            <Route path="handover" element={g(STAFF, <Handover />)} />
+            <Route path="handover" element={g(STAFF, <Navigate to="/my/platform" replace />)} />
             <Route path="report-issue" element={g(STAFF, <ReportIssue />)} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="profile" element={<Profile />} />

@@ -2,7 +2,7 @@ import React from 'react';
 import { getDay, parseISO } from 'date-fns';
 import { MoonIcon, SunIcon } from 'lucide-react';
 import type { AvailabilityDay, AvailabilityState, ShiftCode } from '../../types/domain';
-import { TODAY } from '../../utils/clock';
+import { addCalendarDays, businessDate, shiftStart } from '../../utils/shiftTime';
 import { cn } from '../../utils/cn';
 import { fmtDate } from '../../utils/format';
 import { MonthNav } from '../ui/MonthNav';
@@ -22,11 +22,12 @@ const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // Month grid with a separate Morning and Night slot per date.
 export function AvailabilityCalendar({ month, onMonth, days, editable, onToggle, pendingKey }: Props) {
+  const TODAY = businessDate();
   const lead = days.length ? (getDay(parseISO(days[0].date)) + 6) % 7 : 0;
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <MonthNav month={month} onChange={onMonth} min="2026-09" max="2026-11" />
+        <MonthNav month={month} onChange={onMonth} />
         <AvailabilityLegend />
       </div>
       <div className="grid grid-cols-7 gap-1.5">
@@ -42,7 +43,7 @@ export function AvailabilityCalendar({ month, onMonth, days, editable, onToggle,
               <div className="space-y-1">
                 {(['MORNING', 'NIGHT'] as ShiftCode[]).map((s) => {
                   const st = d[s];
-                  const can = editable && !past && st !== 'ASSIGNED' && st !== 'CONFLICT';
+                  const can = editable && !past && d.date <= addCalendarDays(TODAY, 60) && shiftStart(d.date, s).getTime() > Date.now() && st !== 'ASSIGNED' && st !== 'CONFLICT';
                   const Icon = s === 'MORNING' ? SunIcon : MoonIcon;
                   return (
                     <button

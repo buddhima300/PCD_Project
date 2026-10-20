@@ -37,7 +37,7 @@ export function Incidents() {
 
   return (
     <div>
-      <PageHeader title="Laptop incidents" description="Incidents raised from handovers or reported directly. High and critical incidents block the laptop from use." actions={<Link to="/report-issue"><Button size="sm">Report issue</Button></Link>} />
+      <PageHeader title="Laptop incidents" description="Equipment incidents reported by staff and supervisors. High and critical incidents block the laptop from use." actions={<Link to="/report-issue"><Button size="sm">Report issue</Button></Link>} />
       <Card>
         <div className="flex flex-wrap gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Incident, laptop, title" className="w-56" />
@@ -72,7 +72,7 @@ export function Incidents() {
             <p className="font-medium">{sel.title}</p>
             <p className="text-ink-muted">{sel.description}</p>
             <div className="flex gap-2"><StatusBadge status={sel.severity} /><StatusBadge status={sel.status} /></div>
-            <p className="text-xs text-ink-subtle">Reported by {sel.reportedByName} · {fmtDateTime(sel.createdAt)}{sel.handoverId ? ` · from handover ${sel.handoverId}` : ''}</p>
+            <p className="text-xs text-ink-subtle">Reported by {sel.reportedByName} · {fmtDateTime(sel.createdAt)}</p>
             {isOps && sel.status !== 'RESOLVED' &&
           <>
                 <Field label="New status" htmlFor="ns"><Select id="ns" value={next} onChange={(e) => setNext(e.target.value as IncidentStatus)} options={[{ value: 'IN_PROGRESS', label: 'In progress' }, { value: 'RESOLVED', label: 'Resolved' }]} /></Field>

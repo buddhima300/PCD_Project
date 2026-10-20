@@ -12,7 +12,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, breadcrumbs, meta }: PageHeaderProps) {
   return (
-    <header className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <header className="app-page-header mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div className="min-w-0">
         {breadcrumbs &&
         <nav aria-label="Breadcrumb" className="mb-1.5 flex flex-wrap items-center gap-1 text-xs text-ink-subtle">

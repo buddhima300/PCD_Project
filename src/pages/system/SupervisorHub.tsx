@@ -1,17 +1,14 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { areaLinks, contextualDestination, supervisorAreaFor } from '../../data/supervisorNavigation';
-import { useBreakSnapshot } from '../../features/break-management/hooks';
+import { supervisorAreaFor } from '../../data/supervisorNavigation';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { WorkspaceSummary } from '../../components/ui/WorkspaceSummary';
 import { QueryView } from '../../components/ui/States';
 import { EquipmentWorkspace } from '../resources/EquipmentWorkspace';
-import { Roster } from '../scheduling/Roster';
-import { PlatformOperations } from '../platforms/PlatformOperations';
 import { Reports } from './Reports';
 import { api } from '../../services/api';
-import { TODAY } from '../../utils/clock';
 import { reportDefinitions } from '../../data/reports';
+import { SupervisorAreaNavigation } from '../../components/layout/SupervisorAreaNavigation';
 
 export function SupervisorHub() {
   const { pathname } = useLocation();
@@ -19,33 +16,15 @@ export function SupervisorHub() {
   if (!area) return null;
   if (area.id === 'equipment') return <EquipmentWorkspace />;
   return <div className="area-workspace"><PageHeader title={area.label} description={area.description} /><SupervisorHubLinks />
-    {area.id === 'scheduling' && <><SchedulingSummary /><Roster embedded /></>}
-    {area.id === 'operations' && <PlatformOperations embedded />}
     {area.id === 'insights' && <><InsightsSummary /><Reports embedded /></>}
   </div>;
 }
 
 export function SupervisorHubLinks() {
-  const { pathname, search } = useLocation();
-  const breaks = useBreakSnapshot();
+  const { pathname } = useLocation();
   const area = supervisorAreaFor(pathname);
   if (!area) return null;
-  const links = areaLinks(area, breaks.data);
-  return <nav aria-label={`${area.label} tools`} className="workspace-tabs mb-5 flex flex-wrap gap-1 border-b border-line">
-    <Link to={area.to} aria-current="page" className="border-b-2 border-primary px-3 py-3 text-xs font-medium text-primary">Overview</Link>
-    {links.map(link => <Link key={link.to} to={contextualDestination(link.to, pathname, search)} className="px-3 py-3 text-xs font-medium text-ink-muted hover:text-ink"><link.icon className="mr-1.5 inline h-4 w-4" aria-hidden />{link.label}</Link>)}
-  </nav>;
-}
-
-function SchedulingSummary() {
-  const query = useQuery({ queryKey: ['daily-roster', TODAY, {}], queryFn: () => api.getDailyRoster(TODAY, {}) });
-  return <QueryView query={query}>{rows => <WorkspaceSummary label={`Scheduling summary for ${TODAY}`} items={[
-    { label: 'Rostered staff', value: rows.length, note: `Today · ${TODAY}` },
-    { label: 'Working', value: rows.filter(row => row.state === 'WORKING').length },
-    { label: 'Off-day / leave', value: rows.filter(row => row.state === 'OFF' || row.state === 'LEAVE').length },
-    { label: 'Absent', value: rows.filter(row => row.state === 'ABSENT').length },
-    { label: 'Replaced', value: rows.filter(row => row.state === 'REPLACED').length },
-  ]} />}</QueryView>;
+  return <SupervisorAreaNavigation area={area}/>;
 }
 
 function InsightsSummary() {

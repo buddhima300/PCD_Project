@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ProductionAssignment } from '../../components/placement/ProductionAssignment';
+import { Field, Input } from '../../components/ui/Field';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   GraduationCapIcon,
@@ -29,6 +32,8 @@ import { cn } from '../../utils/cn';
 
 export function PlatformTraining() {
   const queryClient = useQueryClient();
+  const [assignment,setAssignment]=useState<PlatformTrainingAssignment|null>(null);
+  const [extensionDays,setExtensionDays]=useState(2);
   const [selectedTraining, setSelectedTraining] = useState<PlatformTrainingAssignment | null>(null);
   const [evaluationModal, setEvaluationModal] = useState<PlatformTrainingAssignment | null>(null);
 
@@ -38,7 +43,9 @@ export function PlatformTraining() {
   const [processAccuracy, setProcessAccuracy] = useState(4);
   const [systemUsage, setSystemUsage] = useState(5);
   const [qualityStandards, setQualityStandards] = useState(5);
-  const [feedback, setFeedback] = useState('Demonstrates exceptional aptitude in platform tools and payment exception workflows.');
+  const [feedback, setFeedback] = useState('');
+
+  useEffect(()=>{setFeedback('');setExtensionDays(2);},[evaluationModal?.id]);
 
   const q = useQuery({
     queryKey: ['trainings'],
@@ -53,7 +60,7 @@ export function PlatformTraining() {
       toast.success(`Training progress updated`, {
         description: `${updated.workerName} completed Day ${updated.completedTrainingDays}/${updated.requiredTrainingDays}.`
       });
-      setSelectedTraining(updated);
+      setSelectedTraining(current => current?.id === updated.id ? updated : current);
       queryClient.invalidateQueries({ queryKey: ['trainings'] });
       queryClient.invalidateQueries({ queryKey: ['platform-demands'] });
       queryClient.invalidateQueries({ queryKey: ['platform-positions'] });
@@ -75,8 +82,8 @@ export function PlatformTraining() {
       }),
     onSuccess: (updated, vars) => {
       if (vars.result === 'PASSED') {
-        toast.success(updated.trainingOnly ? 'Qualification passed · ready for production assignment' : 'Qualification passed · production activated', {
-          description: updated.trainingOnly ? `${updated.workerName} remains in a training placement. Assign to production through the platform staffing panel.` : `${updated.workerName} is now PRODUCTION_ACTIVE on ${updated.platformCode} (${updated.positionCode}).`
+        toast.success('Qualification passed · ready for platform assignment', {
+          description: `${updated.workerName} passed qualification. Open Workforce → Platform assignments to choose a platform and shift.`
         });
       } else if (vars.result === 'EXTEND') {
         toast.warning(`Training Extended`, {
@@ -96,49 +103,52 @@ export function PlatformTraining() {
       queryClient.invalidateQueries({ queryKey: ['platform-positions'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['freelancers'] });
-      queryClient.invalidateQueries({ queryKey: ['platforms'] });
+      queryClient.invalidateQueries();
     }
   });
 
   const trainings = q.data ?? [];
-  const inTrainingCount = trainings.filter((t) => t.trainingStatus === 'IN_TRAINING').length;
+  const inTrainingCount = trainings.filter(t=>t.trainingStatus==='IN_TRAINING' && t.completedTrainingDays<t.requiredTrainingDays).length;
+  const awaitingReview=trainings.filter(t=>['IN_TRAINING','TRAINING_EXTENDED'].includes(t.trainingStatus)&&t.completedTrainingDays>=t.requiredTrainingDays).length;
   const completedCount = trainings.filter((t) => t.trainingStatus === 'TRAINING_COMPLETED').length;
-  const extendedCount = trainings.filter((t) => t.trainingStatus === 'TRAINING_EXTENDED').length;
+  const extendedCount = trainings.filter(t=>t.trainingStatus==='TRAINING_EXTENDED'&&t.completedTrainingDays<t.requiredTrainingDays).length;
 
   return (
     <div className="space-y-4">
       <PageHeader
-        title="On-platform training & permanent qualification"
+        title="Staff training"
+        actions={<Link to="/candidates"><Button size="sm" variant="secondary">Assign candidates to training</Button></Link>}
         description="Track platform training and qualification. New training placements remain separate from production staffing until a supervisor explicitly assigns the qualified person to production."
       />
 
       {/* KPI Counters */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <div className="app-panel rounded-2xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl">
-          <p className="text-xs font-medium text-ink-subtle">Total on-platform trainees</p>
+          <p className="text-xs font-medium text-ink-subtle">Total training staff</p>
           <p className="mt-1 text-2xl font-bold text-ink tabular">{trainings.length}</p>
-          <p className="mt-1 text-[11px] text-ink-muted">Assigned directly to production platforms</p>
+          <p className="mt-1 text-[11px] text-ink-muted">Training before production assignment</p>
         </div>
         <div className="app-panel rounded-2xl border border-primary-200 bg-primary-50/50 p-4 backdrop-blur-xl">
           <p className="text-xs font-medium text-primary-800">Currently in training</p>
           <p className="mt-1 text-2xl font-bold text-primary-900 tabular">{inTrainingCount}</p>
-          <p className="mt-1 text-[11px] text-primary-700">Occupying platform capacity</p>
+          <p className="mt-1 text-[11px] text-primary-700">Training placements</p>
         </div>
         <div className="app-panel rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 backdrop-blur-xl">
-          <p className="text-xs font-medium text-emerald-800">Training qualified</p>
+          <p className="text-xs font-medium text-emerald-800">Qualified after review</p>
           <p className="mt-1 text-2xl font-bold text-emerald-900 tabular">{completedCount}</p>
           <p className="mt-1 text-[11px] text-emerald-700">Includes qualified trainees awaiting production assignment</p>
         </div>
         <div className="app-panel rounded-2xl border border-amber-200 bg-amber-50/50 p-4 backdrop-blur-xl">
-          <p className="text-xs font-medium text-amber-800">Extended qualification</p>
+          <p className="text-xs font-medium text-amber-800">Training extended</p>
           <p className="mt-1 text-2xl font-bold text-amber-900 tabular">{extendedCount}</p>
           <p className="mt-1 text-[11px] text-amber-700">Reinforcement days on same platform</p>
         </div>
+        <div className="rounded-2xl border border-line bg-surface p-4"><p className="text-xs text-ink-muted">Completed · awaiting review</p><p className="mt-1 text-2xl font-bold tabular">{awaitingReview}</p></div>
       </div>
 
       <Card>
         <CardHeader
-          title="Active on-platform training assignments"
+          title="Training progress and evaluations"
           description="Track daily shift progress and execute final supervisor evaluations."
         />
 
@@ -151,7 +161,6 @@ export function PlatformTraining() {
                     <th className="px-4 py-2.5">Platform</th>
                     <th className="px-3 py-2.5">Dept</th>
                     <th className="px-4 py-2.5">Worker</th>
-                    <th className="px-3 py-2.5">Position</th>
                     <th className="px-3 py-2.5">Shift</th>
                     <th className="px-3 py-2.5">Progress</th>
                     <th className="px-3 py-2.5">Training Status</th>
@@ -173,10 +182,7 @@ export function PlatformTraining() {
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-semibold text-ink">{t.workerName}</p>
-                          <p className="font-mono text-[11px] text-ink-subtle">{t.workerId}</p>
-                        </td>
-                        <td className="px-3 py-3 font-mono font-semibold text-ink">
-                          {t.positionCode}
+                          <p className="font-mono text-[11px] text-ink-subtle">{t.candidateReference??t.workerId}</p>
                         </td>
                         <td className="px-3 py-3">
                           <ShiftTag shift={t.shift} />
@@ -202,7 +208,7 @@ export function PlatformTraining() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1.5">
-                            {t.trainingOnly && !t.promotedAt && t.trainingStatus === 'TRAINING_COMPLETED' && <PlatformSetupActions platformCode={t.platformCode} compact />}
+                            {t.trainingOnly && !t.promotedAt && t.trainingStatus === 'TRAINING_COMPLETED' && <Button size="xs" onClick={()=>setAssignment(t)}>Assign platform</Button>}
                             <Button size="xs" variant="secondary" onClick={() => setSelectedTraining(t)}>
                               View Progress
                             </Button>
@@ -246,7 +252,7 @@ export function PlatformTraining() {
           onClose={() => setSelectedTraining(null)}
           size="lg"
           title={`On-Platform Training: ${selectedTraining.workerName}`}
-          description={`${selectedTraining.platformCode} · Position ${selectedTraining.positionCode} · ${selectedTraining.dept}`}
+          description={`${selectedTraining.platformCode} · ${selectedTraining.dept}`}
           footer={
             <div className="flex w-full items-center justify-between">
               <span className="text-xs text-ink-muted">
@@ -263,7 +269,7 @@ export function PlatformTraining() {
                     loading={progressMutation.isPending}
                     icon={<CheckIcon className="h-4 w-4" />}
                   >
-                    Simulate Day {selectedTraining.completedTrainingDays + 1} Completion
+                    Complete Day {selectedTraining.completedTrainingDays + 1} Completion
                   </Button>
                 )}
                 {selectedTraining.completedTrainingDays >= selectedTraining.requiredTrainingDays &&
@@ -288,14 +294,6 @@ export function PlatformTraining() {
               <div>
                 <p className="text-ink-subtle">Platform</p>
                 <p className="font-bold text-primary-700 text-sm">{selectedTraining.platformCode}</p>
-              </div>
-              <div>
-                <p className="text-ink-subtle">Assigned Position</p>
-                <p className="font-mono font-bold text-ink text-sm">{selectedTraining.positionCode}</p>
-              </div>
-              <div>
-                <p className="text-ink-subtle">Workstation</p>
-                <p className="font-mono text-ink">{selectedTraining.workstationId?.slice(-18)}</p>
               </div>
               <div>
                 <p className="text-ink-subtle">Shift</p>
@@ -347,51 +345,57 @@ export function PlatformTraining() {
             </div>
 
             <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-3 text-xs text-primary-950 font-medium">
-              {selectedTraining.trainingOnly ? `This training placement on ${selectedTraining.platformCode} does not count toward production staffing. After passing qualification, a supervisor must explicitly assign the person to production.` : `This worker will become a production member of ${selectedTraining.platformCode} upon passing the existing qualification workflow.`}
+              {`After passing qualification, a supervisor must assign this person to a production platform through Workforce → Platform assignments.`}
             </div>
           </div>
         </Dialog>
       )}
 
+      {assignment&&<ProductionAssignment training={assignment} onClose={()=>setAssignment(null)}/>}
       {/* Supervisor Evaluation Modal */}
       {evaluationModal && (
         <Dialog
           open={!!evaluationModal}
-          onClose={() => setEvaluationModal(null)}
+          onClose={() => {if(!evalMutation.isPending)setEvaluationModal(null);}}
           size="lg"
           title="Platform Qualification Evaluation"
-          description={`Worker: ${evaluationModal.workerName} · Platform: ${evaluationModal.platformCode} · Position: ${evaluationModal.positionCode}`}
+          description={`Worker: ${evaluationModal.workerName} · Platform: ${evaluationModal.platformCode} `}
           footer={
             <div className="flex w-full items-center justify-between">
-              <Button size="sm" variant="secondary" onClick={() => setEvaluationModal(null)}>
+              <Button size="sm" variant="secondary" disabled={evalMutation.isPending} onClick={() => setEvaluationModal(null)}>
                 Cancel
               </Button>
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  variant="secondary"
-                  onClick={() => evalMutation.mutate({ id: evaluationModal.id, result: 'EXTEND', extensionDays: 2 })}
+                  variant="ghost" className="bg-amber-700 text-white hover:bg-amber-800"
+                  disabled={feedback.trim().length<5 || !Number.isInteger(extensionDays) || extensionDays<1 || extensionDays>90}
+                  onClick={() => evalMutation.mutate({ id: evaluationModal.id, result: 'EXTEND', extensionDays })}
                   loading={evalMutation.isPending}
                 >
-                  Extend (+2 Days)
+                  Extend
                 </Button>
                 <Button
                   size="sm"
+                  variant="ghost" className="bg-green-700 text-white hover:bg-green-800"
                   onClick={() => evalMutation.mutate({ id: evaluationModal.id, result: 'PASSED' })}
                   loading={evalMutation.isPending}
                   icon={<AwardIcon className="h-4 w-4 text-emerald-400" />}
                 >
-                  {evaluationModal.trainingOnly ? 'Pass qualification' : 'Pass & activate production'}
+                  Pass
                 </Button>
+                <Button size="sm" variant="danger" className="bg-red-700 text-white hover:bg-red-800" loading={evalMutation.isPending} disabled={feedback.trim().length<5} onClick={()=>evalMutation.mutate({id:evaluationModal.id,result:'FAILED'})}>Fail</Button>
               </div>
             </div>
           }
         >
           <div className="space-y-4">
             <div className="rounded-xl border border-line bg-mist/30 p-3 text-xs text-ink-muted">
-              Rate the candidate across the 5 core operational dimensions. {evaluationModal.trainingOnly ? 'Passing records qualification only. Production assignment is a separate supervisor action in the platform staffing panel.' : `Passing activates position ${evaluationModal.positionCode} on ${evaluationModal.platformCode}.`}
+              Rate the candidate across the 5 core operational dimensions. {'Passing records qualification only. Production assignment is a separate action in Workforce → Platform assignments.'}
             </div>
 
+            <Field label="Additional days when extending" htmlFor="evaluation-extension"><Input id="evaluation-extension" type="number" min={1} max={90} value={extensionDays} onChange={e=>setExtensionDays(Number(e.target.value))}/></Field>
+            <p className="text-xs text-ink-muted">Extension requires a reason below. Failure returns the person to Candidates and releases the training seat.</p>
             <div className="space-y-3">
               {[
                 { label: 'Platform Knowledge (Brand workflows & tools)', val: platformKnowledge, set: setPlatformKnowledge },
@@ -422,8 +426,9 @@ export function PlatformTraining() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-ink">Supervisor Assessment Feedback</label>
+              <label htmlFor="evaluation-feedback" className="text-xs font-semibold text-ink">Supervisor Assessment Feedback</label>
               <textarea
+                id="evaluation-feedback"
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 rows={2}

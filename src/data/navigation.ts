@@ -23,10 +23,10 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
   { label: 'Register Staff', to: '/register', icon: UserPlusIcon, group: 'Recruitment' },
   { label: 'Workforce', to: '/workforce', icon: UsersIcon, group: 'Workforce' },
   { label: 'Platform Demand', to: '/platform-demand', icon: GaugeIcon, group: 'Workforce' },
-  { label: 'Placement Queue', to: '/placement-queue', icon: SparklesIcon, group: 'Workforce' },
+  { label: 'Platform vacancies', to: '/workforce/assignments', icon: UserCheckIcon, group: 'Workforce' },
   { label: 'Employees', to: '/employees', icon: BriefcaseIcon, group: 'Workforce' },
   { label: 'Freelancers', to: '/freelancers', icon: UserRoundCogIcon, group: 'Workforce' },
-  { label: 'On-Platform Training', to: '/training', icon: GraduationCapIcon, group: 'Training' },
+  { label: 'Training', to: '/training', icon: GraduationCapIcon, group: 'Workforce' },
   { label: 'Platform Categories', to: '/categories', icon: LayersIcon, group: 'Platforms' },
   { label: 'Platforms', to: '/platforms', icon: ServerIcon, group: 'Platforms' },
   { label: 'Platform Configuration', to: '/platform-config', icon: SlidersHorizontalIcon, group: 'Platforms' },
@@ -53,7 +53,6 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
   { label: 'My Schedule', to: '/my/schedule', icon: CalendarDaysIcon },
   { label: 'My Off-days', to: '/my/off-days', icon: CalendarOffIcon },
   { label: 'My Workstation', to: '/my/workstation', icon: LaptopIcon },
-  { label: 'Handover', to: '/handover', icon: ArrowLeftRightIcon },
   { label: 'Report Issue', to: '/report-issue', icon: TriangleAlertIcon },
   { label: 'My IRs & Warning Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
   { label: 'Notifications', to: '/notifications', icon: BellIcon },
@@ -66,7 +65,6 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
   { label: 'Assignments', to: '/my/assignments', icon: ClipboardListIcon },
   { label: 'My Platform', to: '/my/platform', icon: ServerIcon },
   { label: 'My Workstation', to: '/my/workstation', icon: LaptopIcon },
-  { label: 'Handover', to: '/handover', icon: ArrowLeftRightIcon },
   { label: 'Report Issue', to: '/report-issue', icon: TriangleAlertIcon },
   { label: 'My IRs & Warning Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
   { label: 'Notifications', to: '/notifications', icon: BellIcon },
@@ -75,9 +73,9 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
 };
 
 export const mobilePrimary: Record<Role, string[]> = {
-  SUPERVISOR: ['/', '/workforce', '/scheduling', '/supervisor-operations'],
-  EMPLOYEE: ['/', '/my/schedule', '/my/off-days', '/handover'],
-  FREELANCER: ['/', '/my/availability', '/my/assignments', '/handover']
+  SUPERVISOR: ['/', '/workforce', '/platforms', '/equipment'],
+  EMPLOYEE: ['/', '/my/schedule', '/my/off-days', '/my/platform'],
+  FREELANCER: ['/', '/my/availability', '/my/assignments', '/my/platform']
 };
 
 export const roleLabels: Record<Role, string> = {

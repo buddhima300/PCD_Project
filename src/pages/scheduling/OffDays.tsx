@@ -20,12 +20,13 @@ import { Tabs } from '../../components/ui/Tabs';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { api, errorMessage } from '../../services/api';
 import type { OffDayRequest } from '../../types/domain';
-import { TODAY } from '../../utils/clock';
+import { businessDate } from '../../utils/shiftTime';
 import { fmtDate, fmtDateTime } from '../../utils/format';
 
 type Tab = 'review' | 'capacity';
 
 export function OffDays() {
+  const TODAY = businessDate();
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') as Tab ?? 'review';
   const qc = useQueryClient();
@@ -42,7 +43,7 @@ export function OffDays() {
   const override = useMutation({
     mutationFn: () => api.overrideOffDay(target!.id, reason),
     onSuccess: (o) => {
-      toast.success(`Override applied to ${o.employeeId}`, { description: 'Audited and employee notified.' });
+      toast.success(`Off-day approved for ${o.employeeId}`, { description: 'Capacity checked, audited and employee notified.' });
       setTarget(null);
       setReason('');
       qc.invalidateQueries();
@@ -51,7 +52,7 @@ export function OffDays() {
 
   return (
     <div>
-      <PageHeader title="Off-days" description="Requests are auto-processed first-come-first-served against a limit of 2 approved per platform + department + date. Overrides are exceptions and always audited." />
+      <PageHeader title="Off-days" description="Requests are auto-processed first-come-first-served against a strict limit of 2 approved per platform + department + date. Reconsider a rejected request only after a slot becomes available." />
       <Tabs className="mb-4" value={tab} onChange={(t) => setParams(previous => { const next = new URLSearchParams(previous); next.set('tab', t); return next; })} tabs={[{ id: 'review', label: 'Request review' }, { id: 'capacity', label: 'Platform off-day capacity' }]} />
       {tab === 'review' ?
       <Card>
@@ -79,7 +80,7 @@ export function OffDays() {
               {
                 key: 'act',
                 header: '',
-                cell: (r) => r.status === 'REJECTED' && r.date > TODAY ? <Button size="sm" variant="secondary" icon={<ShieldCheckIcon className="h-3.5 w-3.5" />} onClick={() => setTarget(r)}>Override</Button> : null
+                cell: (r) => r.status === 'REJECTED' && r.date > TODAY ? <Button size="sm" variant="secondary" icon={<ShieldCheckIcon className="h-3.5 w-3.5" />} onClick={() => setTarget(r)}>Reconsider</Button> : null
               }]
               } />
             
@@ -102,12 +103,12 @@ export function OffDays() {
       <Dialog
         open={!!target}
         onClose={() => setTarget(null)}
-        title="Manager override"
-        description="Approve beyond the 2-per-group limit as an exception."
+        title="Reconsider off-day"
+        description="Recheck current capacity. The two-person limit still applies."
         footer={
         <>
             <Button variant="ghost" size="sm" onClick={() => setTarget(null)}>Cancel</Button>
-            <Button size="sm" loading={override.isPending} onClick={() => override.mutate()} icon={<ShieldCheckIcon className="h-3.5 w-3.5" />}>Approve with override</Button>
+            <Button size="sm" loading={override.isPending} onClick={() => override.mutate()} icon={<ShieldCheckIcon className="h-3.5 w-3.5" />}>Recheck and approve</Button>
           </>
         }>
         
@@ -117,10 +118,10 @@ export function OffDays() {
               <div><dt className="text-xs text-ink-muted">Employee</dt><dd className="font-medium">{target.employeeId} · {target.employeeName}</dd></div>
               <div><dt className="text-xs text-ink-muted">Group</dt><dd className="font-medium">{target.platformCode} / {target.dept}</dd></div>
               <div><dt className="text-xs text-ink-muted">Date</dt><dd className="font-medium">{fmtDate(target.date, 'EEEE, MMM d')}</dd></div>
-              <div><dt className="text-xs text-ink-muted">Current capacity</dt><dd className="font-medium">2 / 2 OFF → 3 / 2</dd></div>
+              <div><dt className="text-xs text-ink-muted">Capacity rule</dt><dd className="font-medium">At most 2 approved employees</dd></div>
             </dl>
-            <p className="rounded-xl border border-violet-100 bg-violet-50 p-3 text-xs text-violet-600">This will be recorded as a manager override with your name, timestamp, previous capacity and reason. The employee is notified.</p>
-            <Field label="Override reason (min 10 characters)" htmlFor="ovr">
+            <p className="rounded-xl border border-violet-100 bg-violet-50 p-3 text-xs text-violet-600">The server checks available capacity and monthly entitlement again. Your decision is audited and the employee is notified.</p>
+            <Field label="Decision reason (min 5 characters)" htmlFor="ovr">
               <Textarea id="ovr" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Bereavement — compassionate exception" />
             </Field>
             {override.isError && <p role="alert" className="rounded-xl bg-danger-50 px-3 py-2 text-sm text-danger-600">{errorMessage(override.error)}</p>}

@@ -34,8 +34,6 @@ export function LaptopTable({ rows, showPool = true, onSelect }: {rows: Laptop[]
         <span className="text-ink-subtle">—</span>
 
       },
-      { key: 'next', header: 'Next scheduled user', cell: (r) => r.nextUserId ? <IdText>{r.nextUserId}</IdText> : <span className="text-xs text-ink-subtle">{r.nextUserNote ?? '—'}</span> },
-      { key: 'handover', header: 'Handover', cell: (r) => r.handoverStatus ? <StatusBadge status={r.handoverStatus} size="xs" /> : <span className="text-ink-subtle">—</span> },
       { key: 'condition', header: 'Condition', cell: (r) => <StatusBadge status={r.condition} size="xs" /> },
       { key: 'incident', header: 'Incident', cell: (r) => r.openIncidentId ? <IdText className="text-danger-600">{r.openIncidentId}</IdText> : <span className="text-ink-subtle">—</span> }]
       } />);

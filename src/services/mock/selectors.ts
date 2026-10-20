@@ -26,7 +26,7 @@ export function capacityState(approved: number): CapacityState {
 
 export function poolSummary(platform: Platform, dept: DeptCode): PoolSummary {
   const id = poolIdOf(platform.code, dept);
-  const laps = db.laptops.filter((l) => l.poolId === id && l.status !== 'RETIRED' && l.workstationId);
+  const laps = db.laptops.filter((l) => l.poolId === id && l.status !== 'RETIRED' && l.workstationId && Number(l.workstationId.split('-').slice(-1)[0]) <= (platform.departments[dept] ?? 0));
   return {
     id,
     platformCode: platform.code,

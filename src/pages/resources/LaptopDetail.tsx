@@ -32,15 +32,13 @@ export function LaptopDetail() {
               <div className="flex justify-between"><dt className="text-ink-muted">Pool</dt><dd><Link to={`/pools/${l.poolId}`} className="flex items-center gap-1.5 hover:text-primary">{l.platformCode} <DeptTag dept={l.dept} /></Link></dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Current user</dt><dd>{l.currentUserId ? <IdText>{l.currentUserId}</IdText> : '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Current shift</dt><dd>{l.currentShift ? <ShiftTag shift={l.currentShift} /> : '—'}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-muted">Next scheduled user</dt><dd className="text-right">{l.nextUserId ? <IdText>{l.nextUserId}</IdText> : <span className="text-xs text-ink-subtle">{l.nextUserNote ?? '—'}</span>}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-muted">Handover</dt><dd>{l.handoverStatus ? <StatusBadge status={l.handoverStatus} size="xs" /> : '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Open incident</dt><dd>{l.openIncidentId ? <IdText className="text-danger-600">{l.openIncidentId}</IdText> : 'None'}</dd></div>
             </dl>
-            <p className="mt-4 rounded-lg bg-canvas p-2.5 text-[11px] text-ink-muted">This laptop is an operational resource of the {l.platformCode} / {l.dept} pool. Users change at each shift handover.</p>
+            <p className="mt-4 rounded-lg bg-canvas p-2.5 text-[11px] text-ink-muted">This laptop is an operational resource of the {l.platformCode} / {l.dept} pool. Staff share devices across shifts.</p>
           </Card>
         </div>
         <Card>
-          <CardHeader title="Chronological history" description="Handovers and incidents, newest first" />
+          <CardHeader title="Chronological history" description="Equipment history, newest first" />
           {history.length === 0 ? <EmptyState title="No history yet" /> :
           <ol className="p-5 pt-4">
               {history.map((h, i) =>

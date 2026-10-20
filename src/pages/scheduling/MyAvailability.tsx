@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AvailabilityCalendar } from '../../components/freelancer/AvailabilityCalendar';
@@ -8,23 +9,27 @@ import { QueryView } from '../../components/ui/States';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { api, errorMessage } from '../../services/api';
 import type { AvailabilityState, ShiftCode } from '../../types/domain';
-import { TODAY } from '../../utils/clock';
+import { businessDate } from '../../utils/shiftTime';
+import '../../components/roster/roster.css';
 
 const next: Record<string, AvailabilityState> = { AVAILABLE: 'UNAVAILABLE', UNAVAILABLE: 'OFF', OFF: 'AVAILABLE' };
 
 export function MyAvailability() {
+  const [params, setParams] = useSearchParams();
   const user = useSessionStore((s) => s.user)!;
   const qc = useQueryClient();
-  const [month, setMonth] = useState(TODAY.slice(0, 7));
-  const q = useQuery({ queryKey: ['freelancer', user.id, month], queryFn: () => api.getFreelancer(user.id, month) });
+  const [month, updateMonth] = useState(() => /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('month') ?? '') ? params.get('month')! : businessDate().slice(0, 7));
+  const setMonth = (value: string) => { updateMonth(value); setParams(previous => { const next = new URLSearchParams(previous); next.set('month', value); return next; }); };
+  const q = useQuery({ queryKey: ['freelancer', user.id, month], queryFn: () => api.getFreelancer(user.id, month), refetchInterval: 15000 });
   const set = useMutation({
     mutationFn: (v: {date: string;shift: ShiftCode;state: AvailabilityState;}) => api.setAvailability(user.id, v.date, v.shift, v.state),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['freelancer', user.id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['freelancer', user.id] }); qc.invalidateQueries({ queryKey: ['roster-workspace'] }); },
     onError: (e) => toast.error('Availability not updated', { description: errorMessage(e) })
   });
   return (
-    <div>
-      <PageHeader title="My availability" description="Set when you can work, per date and shift. Tap a slot to cycle Available → Unavailable → Off. Assigned shifts are locked." />
+    <div className="roster-workspace">
+      <p className="roster-eyebrow mb-2">YOUR TIME / YOUR AVAILABILITY</p>
+      <PageHeader title="My availability" description="Choose when you can support your team, up to 60 days ahead. Tap a slot to cycle Available → Unavailable → Off. Assigned shifts stay locked until a supervisor releases them." />
       <Card className="p-4 md:p-5">
         <QueryView query={q}>
           {(d) =>

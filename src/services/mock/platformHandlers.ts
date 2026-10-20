@@ -4,6 +4,7 @@ import { ApiError, currentAuth, requireRole, respond } from './core';
 import { DEPT_ORDER, db, poolIdOf, pushAudit, wsIdOf } from './db';
 import { groupCountMap, poolSummary, summarizePlatform, textMatch } from './selectors';
 import { format } from 'date-fns';
+import { applyPlatformCapacity } from './platformSetupHandlers';
 
 export interface PlatformQuery {
   category?: string;
@@ -76,13 +77,21 @@ export const platformApi = {
     return db.audit.filter((a) => a.platformCode === code && (a.entity === 'PlatformConfig' || a.entity === 'Platform'));
   }),
 
-  updatePlatformConfig: (code: string, input: {departments: DeptCapacity;status: EntityStatus;reason: string;}) =>
+  updatePlatformConfig: (code: string, input: {departments: DeptCapacity;status: EntityStatus;reason: string;expectedRevision?: number;}) =>
   respond(() => {
     const actor = requireRole('SUPERVISOR');
     const p = db.platforms.find((x) => x.code === code);
     if (!p) throw new ApiError('NOT_FOUND', `Platform ${code} does not exist.`, 404);
     if (!input.reason || input.reason.trim().length < 5) throw new ApiError('VALIDATION', 'A change reason of at least 5 characters is required for audit.', 422);
-    if (p.lifecycle) throw new ApiError('VALIDATION', 'Use Manage setup & staffing to configure this platform and explicitly activate it.', 422);
+    if (input.expectedRevision !== undefined && input.expectedRevision !== (p.revision ?? 1)) throw new ApiError('CONFLICT', 'Platform configuration changed. Refresh before saving again.', 409);
+    if (p.lifecycle === 'SETUP') throw new ApiError('VALIDATION', 'Use Manage setup & staffing to configure this platform and explicitly activate it.', 422);
+    if (p.lifecycle === 'OPERATIONAL') {
+      const staffingTargets = Object.fromEntries(DEPT_ORDER.map(department => [department, { MORNING:Math.min(input.departments[department] ?? 0,p.staffingTargets?.[department]?.MORNING ?? p.departments[department] ?? 0), NIGHT:Math.min(input.departments[department] ?? 0,p.staffingTargets?.[department]?.NIGHT ?? p.departments[department] ?? 0) }]));
+      applyPlatformCapacity(code,{departments:input.departments,staffingTargets,expectedRevision:input.expectedRevision});
+      p.status = input.status;
+      pushAudit({ at:new Date().toISOString(), actorId:actor.userId, actorName:actor.name, role:actor.role, action:'PLATFORM_CONFIG_CHANGE', entity:'PlatformConfig', entityId:p.id, platformCode:code, dept:null, previous:'Saved configuration', next:JSON.stringify(input.departments), reason:input.reason, isOverride:false });
+      return summarizePlatform(p);
+    }
     const changes: string[] = [];
     for (const d of DEPT_ORDER) {
       const before = p.departments[d] ?? 0;
@@ -129,6 +138,7 @@ export const platformApi = {
     for (const d of DEPT_ORDER) if (input.departments[d]) next[d] = input.departments[d];
     p.departments = next;
     p.updatedAt = TODAY;
+    p.revision = (p.revision ?? 1) + 1;
     db.notifications.unshift({ id: db.seq.ntf(), type: 'PLATFORM_CONFIG_CHANGED', title: `${code} configuration updated`, body: `${changes.join(', ')} by ${currentAuth().name}.`, createdAt: format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss"), read: false, emailStatus: 'SENT', link: `/platforms/${code}`, recipientRoles: ['SUPERVISOR'], recipientId: null });
     return summarizePlatform(p);
   })

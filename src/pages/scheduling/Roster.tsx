@@ -18,13 +18,21 @@ import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { useReferenceData } from '../../hooks/useReferenceData';
 import { api } from '../../services/api';
 import type { DeptCode, RosterState } from '../../types/domain';
-import { TODAY } from '../../utils/clock';
+import { RosterWorkspace } from '../../components/roster/RosterWorkspace';
+import { businessDate } from '../../utils/shiftTime';
 import { deptNames, fmtShiftWindow } from '../../utils/format';
 
 type View = 'monthly' | 'daily' | 'platform' | 'department';
 const STATES: RosterState[] = ['WORKING', 'OFF', 'ABSENT', 'REPLACED', 'LEAVE'];
 
 export function Roster({ embedded = false }: { embedded?: boolean }) {
+  const [params] = useSearchParams();
+  return ['daily','platform','department'].includes(params.get('view') ?? '')
+    ? <LegacyRoster embedded={embedded} /> : <RosterWorkspace supervisor embedded={embedded} />;
+}
+
+function LegacyRoster({ embedded = false }: { embedded?: boolean }) {
+  const TODAY = businessDate();
   const [params, setParams] = useSearchParams();
   const view = params.get('view') as View ?? 'monthly';
   const { platforms } = useReferenceData();
@@ -60,7 +68,7 @@ export function Roster({ embedded = false }: { embedded?: boolean }) {
       <Card>
           <div className="flex flex-col gap-3 border-b border-line p-3 xl:flex-row xl:items-center xl:justify-between">
             {filters}
-            <MonthNav month={month} onChange={setMonth} min="2026-09" max="2026-10" />
+            <MonthNav month={month} onChange={setMonth} />
           </div>
           <QueryView query={monthly} isEmpty={(d) => d.rows.length === 0}>
             {(d) =>

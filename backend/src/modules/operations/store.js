@@ -69,6 +69,6 @@ export async function linkAccount(client, user, state) {
 export function translate(value, mapping) {
   if (typeof value === 'string') return mapping.get(value) ?? value;
   if (Array.isArray(value)) return value.map(item => translate(item, mapping));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [mapping.get(key) ?? key, translate(item, mapping)]));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [mapping.get(key) ?? key, ['staffNumber','candidateReference'].includes(key) ? item : translate(item, mapping)]));
   return value;
 }

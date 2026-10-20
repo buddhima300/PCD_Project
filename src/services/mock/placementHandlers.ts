@@ -1,5 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import { SERVER_NOW, TODAY } from '../../utils/clock';
+import { businessDate } from '../../utils/shiftTime';
 import type {
   CandidateStatus,
   DeptCode,
@@ -18,17 +19,18 @@ import type {
   WorkerLifecycle
 } from '../../types/domain';
 import { ApiError, currentAuth, requireRole, respond } from './core';
-import { db, DEPT_ORDER, pad, plusDays, pushAudit, wsIdOf, poolIdOf } from './db';
+import { db, DEPT_ORDER, pad, plusDays, pushAudit, poolIdOf } from './db';
 import { summarizePlatform } from './selectors';
+import { seatCount } from './platformSetupHandlers';
 
-const nowIso = () => format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss");
+const nowIso = () => new Date().toISOString();
 
 export const placementApi = {
   // ---------------- Candidates ----------------
   listCandidates: (q: { search?: string; dept?: DeptCode | ''; status?: string } = {}) =>
     respond(() => {
       requireRole('SUPERVISOR');
-      let list = [...db.candidates];
+      let list = db.candidates.filter(c => c.registeredWorkerId && c.status !== 'PLACED' && !db.trainingAssignments.some(t => (t.workerId === c.registeredWorkerId) && !t.promotedAt && t.trainingStatus !== 'TRAINING_FAILED'));
       if (q.dept) list = list.filter((c) => c.dept === q.dept);
       if (q.status) list = list.filter((c) => c.status === q.status);
       if (q.search) {
@@ -153,7 +155,7 @@ export const placementApi = {
 
           let resourceStatus: ResourceAvailabilityStatus = 'FULL';
           if (vacancy > 0) {
-            resourceStatus = availableWorkstations > 0 ? 'READY' : 'RESOURCE_BLOCKED';
+            resourceStatus = 'READY';
           } else {
             resourceStatus = 'FULL';
           }
@@ -170,7 +172,6 @@ export const placementApi = {
           else if (p.code === 'KANE-15' && d === 'DP') priority = 'MEDIUM';
           else if (vacancyType === 'CRITICAL' && resourceStatus === 'READY') priority = 'HIGH';
           else if (vacancy > 0 && resourceStatus === 'READY') priority = 'MEDIUM';
-          else if (vacancy > 0 && resourceStatus === 'RESOURCE_BLOCKED') priority = 'LOW';
 
           demands.push({
             platformCode: p.code,
@@ -246,7 +247,7 @@ export const placementApi = {
 
         let resourceStatus: ResourceAvailabilityStatus = 'FULL';
         if (vacancy > 0) {
-          resourceStatus = availableWorkstations > 0 ? 'READY' : 'RESOURCE_BLOCKED';
+          resourceStatus = 'READY';
         }
 
         let priority: PlacementPriority = 'LOW';
@@ -267,7 +268,7 @@ export const placementApi = {
           training,
           vacancy,
           availableWorkstations,
-          resourceStatus,
+          resourceStatus: resourceStatus as ResourceAvailabilityStatus,
           priority,
           recommended: priority === 'HIGH' || (priority === 'MEDIUM' && resourceStatus === 'READY'),
           vacantPositions: vacantPositions.map((v) => v.positionCode),
@@ -319,18 +320,13 @@ export const placementApi = {
         );
       }
 
-      // 4. Validate Workstation & Laptop Availability
+      // Staffing reserves shared platform capacity, never a named asset.
       const poolId = poolIdOf(input.platformCode, input.dept);
-      const availableLaptop = db.laptops.find(
-        (l) => l.poolId === poolId && l.status === 'AVAILABLE'
-      );
-      if (!availableLaptop) {
-        throw new ApiError(
-          'RESOURCE_BLOCKED',
-          `Platform ${input.platformCode} / ${input.dept} has workforce vacancy but 0 workstations or laptops are currently available. Placement blocked.`,
-          422
-        );
-      }
+      if (!['MORNING','NIGHT'].includes(input.shift) || seatCount(input.platformCode,input.dept,input.shift) >= (platform.departments[input.dept] ?? 0)) throw new ApiError('CAPACITY_CONFLICT','No shared device capacity remains for this shift.',409);
+      const personId = db.candidates.find(c => c.id === input.workerId)?.registeredWorkerId ?? input.workerId;
+      const person = db.employees.find(w => w.id === personId) ?? db.freelancers.find(w => w.id === personId);
+      if (person && (person.dept !== input.dept || person.status !== 'ACTIVE' || person.accountStatus !== 'ACTIVE')) throw new ApiError('WORKER_MISMATCH','Choose an active person in this department.',422);
+      if (db.laptops.some(l => l.currentUserId === personId) || db.trainingAssignments.some(t => t.workerId === personId && !t.promotedAt && t.trainingStatus !== 'TRAINING_FAILED')) throw new ApiError('ASSIGNMENT_CONFLICT','Resolve the existing assignment before placement.',409);
 
       // 5. Worker Resolution / Onboarding
       let finalWorkerId = input.workerId;
@@ -346,7 +342,7 @@ export const placementApi = {
           if (!worker) throw new ApiError('NOT_FOUND', 'The registered staff record is missing.', 404);
           finalWorkerId = worker.id; finalWorkerName = worker.name;
           Object.assign(worker, { lifecycle:'IN_PLATFORM_TRAINING', qualifiedForProduction:false, positionCode:pos.positionCode });
-          if (input.workerType === 'PERMANENT') Object.assign(worker, { platformCode:input.platformCode, categoryCode:platform.categoryCode, poolId, slot:pos.slot, shift:input.shift, nextShift:input.shift === 'MORNING' ? 'NIGHT' : 'MORNING', currentWorkstationId:pos.workstationId, workstationState:'IN_USE' });
+          if (input.workerType === 'PERMANENT') Object.assign(worker, { platformCode:input.platformCode, categoryCode:platform.categoryCode, poolId, slot:pos.slot, shift:input.shift, nextShift:input.shift === 'MORNING' ? 'NIGHT' : 'MORNING', currentWorkstationId:null, workstationState:null });
           else Object.assign(worker, { currentPlatform:input.platformCode, compatibleCategories:[platform.categoryCode], compatiblePlatforms:[input.platformCode] });
         } else if (input.workerType === 'PERMANENT') {
           finalWorkerId = `EMP-${pad(Math.floor(1050 + Math.random() * 8900), 5)}`;
@@ -366,8 +362,8 @@ export const placementApi = {
             status: 'ACTIVE',
             accountStatus: 'ACTIVE',
             poolId,
-            currentWorkstationId: pos.workstationId,
-            workstationState: 'IN_USE',
+            currentWorkstationId: null,
+            workstationState: null,
             offDaysUsed: 0,
             offDaysAllowance: 4,
             joinedAt: TODAY,
@@ -411,7 +407,9 @@ export const placementApi = {
           existingEmp.shift = input.shift;
           existingEmp.lifecycle = 'IN_PLATFORM_TRAINING';
           existingEmp.qualifiedForProduction = false;
-          existingEmp.currentWorkstationId = pos.workstationId;
+          existingEmp.currentWorkstationId = null;
+          existingEmp.workstationState = null;
+          existingEmp.poolId = poolId;
         }
       }
 
@@ -422,11 +420,9 @@ export const placementApi = {
       pos.assignedWorkerType = input.workerType;
       pos.updatedAt = TODAY;
 
-      // 7. Associate Temporary Hardware
-      availableLaptop.status = 'ASSIGNED';
-      availableLaptop.currentUserId = finalWorkerId;
-      availableLaptop.currentUserName = finalWorkerName;
-      availableLaptop.currentShift = input.shift;
+      // Workforce position identifies staffing only. Actual custody begins at receipt.
+      pos.workstationId = null;
+      pos.shift = input.shift;
 
       // 8. Create Platform Training Assignment
       const durationDays = input.trainingDurationDays || 5;
@@ -442,8 +438,8 @@ export const placementApi = {
         positionCode: pos.positionCode,
         shift: input.shift,
         workstationPoolId: poolId,
-        workstationId: pos.workstationId || wsIdOf(input.platformCode, input.dept, pos.slot),
-        laptopAssetId: availableLaptop.assetId,
+        workstationId: '',
+        laptopAssetId: '',
         trainingStartDate: TODAY,
         expectedCompletionDate: plusDays(TODAY, durationDays),
         actualCompletionDate: null,
@@ -506,9 +502,9 @@ export const placementApi = {
     }),
 
   // ---------------- Training Management ----------------
-  listTrainings: (q: { platform?: string; dept?: DeptCode | ''; status?: string } = {}) =>
+  listTrainings: (q: { platform?: string; dept?: DeptCode | ''; status?: string; history?: boolean } = {}) =>
     respond(() => {
-      let list = [...db.trainingAssignments];
+      let list = db.trainingAssignments.filter(t => q.history || (!t.promotedAt && t.trainingStatus !== 'TRAINING_FAILED' && (t.trainingOnly || ['IN_TRAINING','TRAINING_EXTENDED','TRAINING_ASSIGNED'].includes(t.trainingStatus))));
       if (q.platform) list = list.filter((t) => t.platformCode === q.platform);
       if (q.dept) list = list.filter((t) => t.dept === q.dept);
       if (q.status) list = list.filter((t) => t.trainingStatus === q.status);
@@ -528,10 +524,10 @@ export const placementApi = {
       const t = db.trainingAssignments.find((x) => x.id === id);
       if (!t) throw new ApiError('NOT_FOUND', `Training record ${id} not found.`, 404);
 
-      if (t.trainingOnly && (t.promotedAt || !['IN_TRAINING', 'TRAINING_EXTENDED'].includes(t.trainingStatus))) throw new ApiError('VALIDATION', 'This training placement is no longer in progress.', 422);
+      if (t.promotedAt || !['IN_TRAINING', 'TRAINING_EXTENDED'].includes(t.trainingStatus)) throw new ApiError('VALIDATION', 'This training placement is no longer in progress.', 422);
 
       const targetLog = t.dailyLogs.find((l) => l.day === day);
-      if (t.trainingOnly && (!targetLog || targetLog.status === 'COMPLETED' || day !== t.completedTrainingDays + 1)) throw new ApiError('VALIDATION', 'Complete the next scheduled training day once.', 422);
+      if (!targetLog || targetLog.status === 'COMPLETED' || day !== t.completedTrainingDays + 1) throw new ApiError('VALIDATION', 'Complete the next scheduled training day once.', 422);
       if (targetLog) {
         targetLog.status = 'COMPLETED';
         if (notes) targetLog.notes = notes;
@@ -587,22 +583,33 @@ export const placementApi = {
         evaluation.systemUsage,
         evaluation.qualityStandards
       ];
-      if (t.trainingOnly) {
+      if (t.trainingOnly || (!t.promotedAt && ['IN_TRAINING','TRAINING_EXTENDED'].includes(t.trainingStatus))) {
+        t.trainingOnly = true;
         if (t.promotedAt || !['IN_TRAINING', 'TRAINING_EXTENDED'].includes(t.trainingStatus)) throw new ApiError('VALIDATION', 'This placement has already been evaluated.', 422);
-        if (evaluation.result === 'PASSED' && t.completedTrainingDays < t.requiredTrainingDays) throw new ApiError('VALIDATION', 'Complete all training days before qualification.', 422);
+        if (t.completedTrainingDays < t.requiredTrainingDays) throw new ApiError('VALIDATION', 'Complete all training days before supervisor review.', 422);
+        if(!['PASSED','FAILED','EXTEND'].includes(evaluation.result))throw new ApiError('VALIDATION','Choose Pass, Extend or Fail.',422);
         if (scores.some(score => !Number.isFinite(score) || score < 1 || score > 5)) throw new ApiError('VALIDATION', 'Evaluation scores must be between 1 and 5.', 422);
         const extension = evaluation.extensionDays ?? 2;
         if (evaluation.result === 'EXTEND' && (!Number.isInteger(extension) || extension < 1 || extension > 90)) throw new ApiError('VALIDATION', 'Extension must be 1–90 days.', 422);
+        if (evaluation.result === 'EXTEND' && evaluation.feedback.trim().length < 5) throw new ApiError('VALIDATION','Provide a reason of at least five characters for the extension.',422);
         t.evaluation = { ...evaluation, overallScore: scores.reduce((a, b) => a + b, 0) / scores.length, evaluatedBy: actor.name, evaluatedAt: nowIso() };
         t.trainingStatus = evaluation.result === 'PASSED' ? 'TRAINING_COMPLETED' : evaluation.result === 'FAILED' ? 'TRAINING_FAILED' : 'TRAINING_EXTENDED';
         if (evaluation.result === 'EXTEND') {
           const oldDays = t.requiredTrainingDays;
-          t.dailyLogs.push(...Array.from({ length: extension }, (_, i) => ({ day: oldDays + i + 1, date: plusDays(t.expectedCompletionDate, i), status: 'SCHEDULED' as const, attendance: 'PRESENT' as const })));
+          t.dailyLogs.push(...Array.from({ length: extension }, (_, i) => ({ day: oldDays + i + 1, date: plusDays(t.expectedCompletionDate, i + 1), status: 'SCHEDULED' as const, attendance: 'PRESENT' as const })));
           t.requiredTrainingDays += extension; t.expectedCompletionDate = plusDays(t.expectedCompletionDate, extension);
         }
-        else t.actualCompletionDate = TODAY;
-        const worker = db.employees.find(e => e.id === t.workerId);
+        else t.actualCompletionDate = businessDate();
+        const worker = db.employees.find(e => e.id === t.workerId) ?? db.freelancers.find(f => f.id === t.workerId);
+        if (worker) worker.qualifiedForProduction = false;
         if (worker) worker.lifecycle = evaluation.result === 'PASSED' ? 'TRAINING_COMPLETED' : evaluation.result === 'FAILED' ? 'TRAINING_FAILED' : 'TRAINING_EXTENDED';
+        if(evaluation.result === 'FAILED') {
+          const candidate=db.candidates.find(c=>c.registeredWorkerId===t.workerId || c.id===t.workerId);
+          if(candidate)candidate.status='SELECTED';
+          if(worker && 'platformCode' in worker)Object.assign(worker,{platformCode:'',categoryCode:'',poolId:'',slot:0});
+          else if(worker)Object.assign(worker,{currentPlatform:null,compatiblePlatforms:[],compatibleCategories:[]});
+          for(const position of db.platformPositions.filter(p=>p.assignedWorkerId===t.workerId || p.reservedForWorkerId===t.workerId))Object.assign(position,{status:'VACANT',assignedWorkerId:null,reservedForWorkerId:null,assignedWorkerName:null});
+        }
         pushAudit({ at: nowIso(), actorId: actor.userId, actorName: actor.name, role: actor.role, action: 'TRAINING_EVALUATED', entity: 'PlatformTrainingAssignment', entityId: t.id, platformCode: t.platformCode, dept: t.dept, previous: 'IN_TRAINING', next: t.trainingStatus, reason: evaluation.feedback || 'Supervisor qualification evaluation', isOverride: false });
         return t;
       }

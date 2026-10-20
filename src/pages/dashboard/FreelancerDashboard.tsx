@@ -1,16 +1,15 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftRightIcon, CalendarCheckIcon, ClipboardListIcon, MoonIcon, SunIcon } from 'lucide-react';
+import { CalendarCheckIcon, ClipboardListIcon, MoonIcon, SunIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
-import { CapacityMeter } from '../../components/ui/CapacityMeter';
+import { RadialProgress } from '../../components/ui/RadialProgress';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { api } from '../../services/api';
-import { deptNames, fmtDate, fmtShiftWindow, fmtTime, relative } from '../../utils/format';
+import { deptNames, fmtDate, fmtShiftWindow, relative } from '../../utils/format';
 
 export function FreelancerDashboard() {
   const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork() });
@@ -20,7 +19,6 @@ export function FreelancerDashboard() {
   const w = q.data;
   const cur = w.currentAssignment;
   const today = w.availability[0];
-  const incoming = w.handovers.find((h) => h.direction === 'INCOMING' && h.handover.status !== 'COMPLETED');
 
   return (
     <div>
@@ -29,14 +27,14 @@ export function FreelancerDashboard() {
         description={`${w.person.id} · ${deptNames[w.person.dept]} freelancer · Priority ${w.person.priority} in ${w.person.dept}`} />
 
       {/* Platform Compatibility Banner */}
-      <div className="mb-4 rounded-xl border border-line bg-surface p-3.5 flex items-center justify-between text-xs">
+      <div className="mb-4 rounded-xl border border-line bg-surface p-3.5 flex flex-wrap gap-3 items-center justify-between text-xs">
         <div>
           <span className="font-semibold text-ink">Verified Platform Compatibility:</span>{' '}
-          <span className="text-primary-700 font-bold">{w.person.compatibleCategories?.join(', ') || 'KANE, JAX'}</span>
-          <span className="ml-2 text-ink-muted">· Direct on-platform training completed</span>
+          <span className="text-primary-700 font-bold">{w.person.compatibleCategories?.join(', ') || 'Awaiting qualification'}</span>
+          <span className="ml-2 text-ink-muted">· {w.person.qualifiedForProduction === false ? 'Training required or in progress' : 'Qualification recorded'}</span>
         </div>
         <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-          Qualified for Production
+          {w.person.qualifiedForProduction === false ? 'Awaiting production assignment' : 'Qualified for production'}
         </span>
       </div>
 
@@ -76,18 +74,6 @@ export function FreelancerDashboard() {
                   <span className="text-[15px] font-semibold">{fmtShiftWindow(cur.shiftStart, cur.shiftEnd)}</span>
                   <StatusBadge status={cur.status} className="ml-auto" />
                 </div>
-                {incoming &&
-              <div className="mt-3 flex flex-col gap-3 rounded-xl border border-warning-100 bg-warning-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <ArrowLeftRightIcon className="mt-0.5 h-5 w-5 text-warning-600" />
-                      <div>
-                        <p className="text-sm font-semibold">Receive {incoming.handover.workstationId} at {fmtTime(incoming.handover.scheduledAt)}</p>
-                        <p className="text-xs text-ink-muted">From {incoming.handover.outgoingName} · {incoming.handover.status.replace('_', ' ').toLowerCase()}</p>
-                      </div>
-                    </div>
-                    <Link to="/handover"><Button size="sm">Open handover</Button></Link>
-                  </div>
-              }
               </>
             }
           </div>
@@ -96,10 +82,7 @@ export function FreelancerDashboard() {
         <Card className="xl:col-span-4">
           <CardHeader title="Current workload" description="Maximum 2 shifts in any rolling 24 hours" />
           <div className="p-5 pt-3">
-            <p className="text-3xl font-semibold tabular">
-              {w.workloadUsed} <span className="text-base font-medium text-ink-muted">/ {w.workloadLimit} shifts</span>
-            </p>
-            <div className="mt-2"><CapacityMeter used={w.workloadUsed} capacity={w.workloadLimit} showText={false} /></div>
+            <div className="flex items-center gap-4"><RadialProgress value={w.workloadUsed} max={w.workloadLimit} label="Current workload" tone={w.workloadUsed >= w.workloadLimit ? 'orange' : 'lime'} caption="shifts"/><div><p className="text-sm font-semibold">Shift workload</p><p className="mt-1 text-xs text-ink-muted">{w.workloadUsed} of {w.workloadLimit} shifts used</p></div></div>
             {w.workloadUsed >= w.workloadLimit && <p className="mt-2 text-xs font-semibold text-danger-600">Workload limit reached — no further assignments in this window.</p>}
             <div className="mt-5 border-t border-line pt-4">
               <p className="text-xs font-semibold">Today’s availability</p>

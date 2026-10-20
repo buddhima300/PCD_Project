@@ -32,7 +32,10 @@ function plannedWorker(laptop: Laptop, date: string, shift: ShiftCode) {
 }
 
 /** Mock scheduling adapter: materialize planned transfers for real calendar dates. */
+let explicitEquipmentScheduling = false;
+export function useExplicitEquipmentScheduling() { explicitEquipmentScheduling = true; }
 function ensureScheduledHandovers(date: string) {
+  if (explicitEquipmentScheduling) return;
   for (const laptop of db.laptops.filter(l => l.workstationId && l.status !== 'RETIRED' && db.platforms.some(p => p.code === l.platformCode && p.status === 'ACTIVE'))) {
     for (const shift of ['MORNING', 'NIGHT'] as const) {
       const scheduledAt = shiftStart(date, shift).toISOString();
@@ -61,6 +64,11 @@ function updateCustody(h: Handover) {
   if (!laptop) return;
   laptop.handoverStatus = h.status;
   if (h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason)) {
+    for (const held of db.laptops.filter(l => l.assetId !== h.assetId && l.currentUserId === h.incomingId)) {
+      held.currentUserId = null; held.currentUserName = null; held.currentShift = null;
+      held.status = held.openIncidentId || held.condition === 'DAMAGED' ? 'INCIDENT' : 'AVAILABLE';
+      recordAudit(h,'SHARED_DEVICE_RETURNED',`Device switch returned ${held.assetId} to the shared pool`,held.assetId,h.assetId);
+    }
     laptop.currentUserId = h.incomingId; laptop.currentUserName = h.incomingName; laptop.currentShift = h.incomingShift;
     laptop.nextUserId = null; laptop.nextUserName = null;
     laptop.status = db.incidents.some(i => i.assetId === h.assetId && i.status !== 'RESOLVED') || laptop.condition === 'DAMAGED' ? 'INCIDENT' : 'ASSIGNED';
@@ -68,6 +76,11 @@ function updateCustody(h: Handover) {
     if (previous) { previous.currentWorkstationId = null; previous.workstationState = null; }
     const incoming = db.employees.find(e => e.id === h.incomingId);
     if (incoming) { incoming.currentWorkstationId = h.workstationId; incoming.workstationState = 'IN_USE'; }
+  } else if (h.outgoingConfirmedAt && !h.incomingId) {
+    laptop.currentUserId = null; laptop.currentUserName = null; laptop.currentShift = null;
+    laptop.status = laptop.openIncidentId || laptop.condition === 'DAMAGED' ? 'INCIDENT' : 'AVAILABLE';
+    const outgoing = db.employees.find(e => e.id === h.outgoingId);
+    if (outgoing) { outgoing.currentWorkstationId = null; outgoing.workstationState = null; }
   } else if (h.outgoingConfirmedAt && laptop.status === 'ASSIGNED') laptop.status = 'HANDOVER_PENDING';
 }
 
@@ -75,6 +88,7 @@ export function dailyAttendanceRows(date: string): AttendanceRow[] {
   validateDate(date);
   const rows = new Map<string, AttendanceRow>();
   for (const event of db.handovers) {
+    if (event.equipmentOnly) continue;
     for (const direction of ['INCOMING', 'OUTGOING'] as const) {
       const at = instant(direction === 'INCOMING' ? event.receivedAt : event.outgoingConfirmedAt);
       if (!at || businessDate(at) !== date) continue;

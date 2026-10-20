@@ -1,0 +1,118 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { createApp } from '../src/app.js';
+import { readConfig } from '../src/config.js';
+import { hashPassword } from '../src/shared/security.js';
+import { importOperations } from '../scripts/import-operations.js';
+import { loadState, saveState } from '../src/modules/operations/store.js';
+
+test('directory login access enforces authentication, persists access revisions and supports verified legacy returns', async () => {
+  const engine=new PGlite();let tail=Promise.resolve(),server;
+  const db={query:(s,p) => engine.query(s,p),connect:async () => {const prior=tail;let release;tail=new Promise(r => {release=r;});await prior;return {query:(s,p) => engine.query(s,p),release};}};
+  try {
+    for (const file of ['001_foundation.sql','002_operations.sql','003_workflow_records.sql','004_equipment_allocations.sql','005_login_access_controls.sql','007_staff_number_counters.sql']) await engine.exec(await readFile(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
+    const password='Access-integration-password-42',hash=await hashPassword(password);
+    const users={};
+    for (const [name,role] of [['admin','SUPERVISOR'],['supervisor','SUPERVISOR'],['staff','EMPLOYEE']]) {
+      users[name]={id:randomUUID(),name,email:`${name}@access.test`,role};
+      const u=users[name];await db.query('INSERT INTO users(id,name,email,role,password_hash) VALUES($1,$2,$3,$4,$5)',[u.id,u.name,u.email,role,hash]);
+    }
+    await db.query("INSERT INTO user_permissions(user_id,permission) VALUES($1,'accounts.manage'),($1,'attendance.correct')",[users.admin.id]);
+    await importOperations(db,{backup:false,nodeEnv:'test'});
+    const workerId=(await db.query('SELECT worker_id FROM operational_accounts WHERE user_id=$1',[users.staff.id])).rows[0].worker_id;
+    const origin='http://localhost:5173';
+    server=createApp(db,readConfig({NODE_ENV:'test',DATABASE_URL:'postgresql://unused',FRONTEND_ORIGIN:origin})).listen(0,'127.0.0.1');
+    await new Promise(resolve => server.once('listening',resolve));
+    const base=`http://127.0.0.1:${server.address().port}/api/v1`;
+    const request=async (path,body,session,csrf=true) => {
+      const response=await fetch(base+path,{method:body === undefined ? 'GET' : 'POST',headers:{Origin:origin,...(body === undefined ? {} : {'Content-Type':'application/json'}),...(session ? {Cookie:session.cookie,...(csrf ? {'X-CSRF-Token':session.csrfToken} : {})} : {})},body:body === undefined ? undefined : JSON.stringify(body)});
+      return {status:response.status,data:response.status === 204 ? null : await response.json(),cookie:response.headers.get('set-cookie')?.split(';')[0]};
+    };
+    const login=async name => {const result=await request('/auth/login',{email:users[name].email,password});assert.equal(result.status,200,JSON.stringify(result.data));return {...result.data,cookie:result.cookie};};
+    const admin=await login('admin'),supervisor=await login('supervisor'),staff=await login('staff');
+    const call=(method,args=[],session=supervisor,csrf=true) => request(`/operations/workflows/${method}`,{args},session,csrf);
+    const run=async (method,args=[],session=supervisor) => {const result=await call(method,args,session);assert.equal(result.status,200,JSON.stringify(result.data));return result.data;};
+    const detail=await run('getEmployee',[workerId]);
+    const membership=detail.employee.platformCode;
+    assert.equal(detail.employee.loginAccess.hasAccount,true);assert.equal(detail.employee.loginAccess.revision,1);
+    assert.equal(detail.employee.loginAccess.canManage,true);
+    const input=(enabled,expectedRevision) => [users.staff.id,{enabled,expectedRevision}];
+    assert.equal((await call('setEmployeeLoginAccess',input(false,1),staff)).status,403);
+    assert.equal((await call('setEmployeeLoginAccess',input(false,1),supervisor,false)).status,403);
+    const disabled=await run('setEmployeeLoginAccess',input(false,1));
+    assert.equal(disabled.accountStatus,'LOCKED');assert.equal(disabled.status,detail.employee.status);assert.equal(disabled.platformCode,membership);assert.equal(disabled.loginAccess.revision,2);
+    assert.equal((await request('/auth/me',undefined,staff)).status,401);
+    const blocked=await request('/auth/login',{email:users.staff.email,password});
+    assert.equal(blocked.status,403);assert.equal(blocked.data.error.code,'ACCOUNT_BLOCKED');assert.match(blocked.data.error.message,/contact your Supervisor/);
+    const wrong=await request('/auth/login',{email:users.staff.email,password:'Wrong-but-long-password-42'});
+    assert.equal(wrong.status,401);assert.equal(wrong.data.error.code,'INVALID_CREDENTIALS');
+    const account=(await db.query('SELECT status,access_revision,access_changed_by FROM users WHERE id=$1',[users.staff.id])).rows[0];
+    assert.equal(account.status,'LOCKED');assert.equal(account.access_changed_by,users.supervisor.id);
+    assert.equal((await call('setEmployeeLoginAccess',input(true,1))).status,409);
+    assert.equal((await run('getEmployee',[workerId])).employee.accountStatus,'LOCKED');
+    await run('setEmployeeLoginAccess',input(true,2));
+    assert.equal((await login('staff')).user.id,users.staff.id);
+    const concurrent=await Promise.all([call('setEmployeeLoginAccess',input(false,3)),call('setEmployeeLoginAccess',input(false,3))]);
+    assert.deepEqual(concurrent.map(r => r.status).sort(),[200,409]);
+    await db.query("UPDATE workers SET status='SUSPENDED' WHERE worker_number=$1",[workerId]);
+    const invalidUnlock=await call('setEmployeeLoginAccess',input(true,4));
+    assert.equal(invalidUnlock.status,409);assert.equal(invalidUnlock.data.error.code,'WORKER_INACTIVE');
+    await db.query("UPDATE workers SET status='ACTIVE' WHERE worker_number=$1",[workerId]);
+    await run('setEmployeeLoginAccess',input(true,4));
+    const fresh=await login('staff');
+    const unlinked=(await loadState(db)).employees.find(e => e.id !== workerId && e.id !== 'EMP-00421');
+    assert.equal((await run('getEmployee',[unlinked.id])).employee.loginAccess.hasAccount,false);
+    const noAccount=await call('setEmployeeLoginAccess',[unlinked.id,{enabled:true,expectedRevision:1}]);
+    assert.equal(noAccount.status,409);assert.equal(noAccount.data.error.code,'ACCOUNT_NOT_LINKED');
+    // Prepare old custody without changing the employee's historical confirmations.
+    const state=await loadState(db),previous=structuredClone(state),employee=state.employees.find(e => e.id === workerId);
+    state.trainingAssignments=state.trainingAssignments.filter(t => t.workerId !== workerId);
+    state.offDays=state.offDays.filter(o => o.employeeId !== workerId);
+    state.replacements=state.replacements.filter(r => r.absentEmployeeId !== workerId);
+    state.handovers=state.handovers.filter(h => h.incomingId !== workerId && h.outgoingId !== workerId);
+    for (const l of state.laptops.filter(l => l.currentUserId === workerId)) l.currentUserId=null;
+    const laptop=state.laptops[0];Object.assign(laptop,{currentUserId:workerId,currentUserName:employee.name,status:'ASSIGNED'});
+    employee.currentWorkstationId=laptop.workstationId;
+    const history={id:'LEGACY-ACCESS',assetId:laptop.assetId,incomingId:workerId,outgoingId:'PREVIOUS',scheduledAt:new Date(Date.now()-30*86400000).toISOString(),receivedAt:new Date(Date.now()-30*86400000+60000).toISOString(),outgoingConfirmedAt:new Date(Date.now()-30*86400000).toISOString(),status:'COMPLETED'};
+    state.handovers.push(history);
+    await saveState(db,state,previous);
+    const denied=await call('unassignEmployeePlatform',[workerId,{expectedPlatform:membership,reason:'Platform staffing change'}]);
+    assert.equal(denied.data.error.code,'DEVICE_RETURN_REQUIRED');
+    const ordinaryReview=await run('getEmployeeReleaseInfo',[workerId]);
+    assert.equal(ordinaryReview.devices[0].canVerifyReturn,false);
+    const info=await run('getEmployeeReleaseInfo',[workerId],admin);
+    assert.equal(info.devices[0].assetId,laptop.assetId);assert.equal(info.devices[0].canVerifyReturn,true);
+    const verify={assetId:laptop.assetId,physicallyReturned:true,reason:'Physically verified device returned to shared pool'};
+    assert.equal((await call('verifyEmployeeDeviceReturn',[workerId,verify])).status,403);
+    assert.equal((await call('verifyEmployeeDeviceReturn',[workerId,{...verify,physicallyReturned:false}],admin)).status,422);
+    await run('verifyEmployeeDeviceReturn',[workerId,verify],admin);
+    const saved=await loadState(db);
+    assert.equal(saved.laptops.find(l => l.assetId === laptop.assetId).currentUserId,null);
+    assert.deepEqual(saved.handovers.find(h => h.id === history.id),history);
+    assert.equal((await call('verifyEmployeeDeviceReturn',[workerId,verify],admin)).status,409);
+    await run('unassignEmployeePlatform',[workerId,{expectedPlatform:membership,reason:'Returned equipment and released staffing'}]);
+    assert.equal((await run('getEmployee',[workerId])).employee.platformCode,'');
+    // Pending counterpart records no longer prevent verified physical returns.
+    const current=await loadState(db),old=structuredClone(current);
+    current.laptops.find(l => l.assetId === laptop.assetId).currentUserId=workerId;
+    current.handovers.push({...history,id:'LIVE-ACCESS',scheduledAt:new Date().toISOString(),receivedAt:null,outgoingConfirmedAt:null});
+    await saveState(db,current,old);
+    assert.equal((await run('getEmployeeReleaseInfo',[workerId],admin)).devices[0].canVerifyReturn,true);
+    assert.equal((await run('getEmployeeReleaseInfo',[workerId],admin)).handovers.length,0);
+    await run('verifyEmployeeDeviceReturn',[workerId,verify],admin);
+    assert.ok((await loadState(db)).handovers.some(h=>h.id==='LIVE-ACCESS'));
+    // Supervisor logins in the employee directory require administrator access and cannot self-toggle.
+    await db.query("UPDATE users SET role='SUPERVISOR' WHERE id=$1",[users.staff.id]);
+    await db.query("UPDATE operational_accounts SET role='SUPERVISOR' WHERE user_id=$1",[users.staff.id]);
+    const promoted=await login('staff');
+    const protectedInfo=await run('getEmployee',[workerId]);
+    assert.equal(protectedInfo.employee.loginAccess.canManage,false);
+    assert.equal((await call('setEmployeeLoginAccess',input(false,5))).status,403);
+    assert.equal((await call('setEmployeeLoginAccess',input(false,5),promoted)).data.error.code,'SELF_ADMINISTRATION');
+    assert.equal((await request('/auth/me',undefined,fresh)).data.user.id,users.staff.id);
+    assert.ok((await db.query("SELECT count(*)::int AS n FROM audit_events WHERE action='STAFF_LOGIN_ACCESS_CHANGED'")).rows[0].n >= 4);
+  } finally {if (server) await new Promise(resolve => server.close(resolve));await engine.close();}
+});

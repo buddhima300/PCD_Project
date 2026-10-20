@@ -16,6 +16,7 @@ const origin = 'http://localhost:5187';
 const password = 'Integration-password-42';
 try {
   await engine.exec(await readFile(new URL('../migrations/001_foundation.sql',import.meta.url),'utf8'));
+  await engine.exec(await readFile(new URL('../migrations/005_login_access_controls.sql',import.meta.url),'utf8'));
   const db = { query:(sql,values)=>engine.query(sql,values),connect:async()=>({query:(sql,values)=>engine.query(sql,values),release(){}}) };
   const id=randomUUID();
   await db.query("INSERT INTO users(id,email,name,role,password_hash) VALUES($1,'integration-admin@example.test','Integration Admin','SUPERVISOR',$2)",[id,await hashPassword(password)]);

@@ -16,6 +16,11 @@ const map: Record<string, {
   icon: typeof BoxIcon;
   label?: string;
 }> = {
+  EQUIPMENT_SHORTAGE: { tone:'danger',icon:WrenchIcon,label:'Equipment shortage' },
+  NEEDS_ALLOCATION: { tone:'warning',icon:UserCheckIcon,label:'Needs allocation' },
+  STAFFING_GAP: { tone:'warning',icon:UserXIcon,label:'Staffing gap' },
+  READY: { tone:'info',icon:CheckCircle2Icon,label:'Ready' },
+  OPERATING: { tone:'success',icon:ActivityIcon,label:'Operating' },
   ACTIVE: {
     tone: 'success',
     icon: CheckCircle2Icon
@@ -251,12 +256,14 @@ export function statusTone(status: string): Tone {
   return map[status]?.tone ?? 'neutral';
 }
 interface StatusBadgeProps {
+  filled?: boolean;
   status: string;
   label?: string;
   size?: 'sm' | 'xs';
   className?: string;
 }
 export function StatusBadge({
+  filled = false,
   status,
   label,
   size = 'sm',
@@ -267,7 +274,7 @@ export function StatusBadge({
     icon: CircleDotIcon
   };
   const Icon = cfg.icon;
-  return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md font-medium ring-1 ring-inset', size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-1.5 py-px text-[11px]', toneClass[cfg.tone], className)}>
+  return <span data-status-tone={filled ? cfg.tone : undefined} className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md font-medium ring-1 ring-inset', size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-1.5 py-px text-[11px]', toneClass[cfg.tone], className)}>
       <Icon className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-3 w-3'} aria-hidden />
       {label ?? cfg.label ?? humanize(status)}
     </span>;

@@ -4,6 +4,8 @@ import { transaction } from '../../db/pool.js';
 import { audit } from '../audit/audit.model.js';
 import { userByEmail, publicUser, grants } from './auth.model.js';
 
+const blockedAccount = () => new ApiError(403,'ACCOUNT_BLOCKED','Your account is temporarily blocked or deactivated. Please contact your Supervisor to review and unlock your account.');
+
 export function createAuthService(db, config) {
   // Same expensive password verification for unknown addresses to reduce enumeration.
   const dummyHash = hashPassword(randomToken());
@@ -11,11 +13,13 @@ export function createAuthService(db, config) {
     async login(email, password, oldToken) {
       const candidate = await userByEmail(db, email);
       const valid = await verifyPassword(password, candidate?.password_hash ?? await dummyHash);
-      if (!candidate || !valid || candidate.status !== 'ACTIVE') throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+      if (!candidate || !valid) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+      if (candidate.status !== 'ACTIVE') throw blockedAccount();
       return transaction(db, async client => {
         // Serialize login with password/account changes; recheck after hashing.
         const user = (await client.query('SELECT * FROM users WHERE id=$1 FOR UPDATE', [candidate.id])).rows[0];
-        if (user.status !== 'ACTIVE' || user.password_hash !== candidate.password_hash) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+        if (user.password_hash !== candidate.password_hash) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+        if (user.status !== 'ACTIVE') throw blockedAccount();
         const token = randomToken();
         const csrfToken = randomToken();
         if (oldToken) await client.query('DELETE FROM sessions WHERE token_hash=$1', [digest(oldToken)]);

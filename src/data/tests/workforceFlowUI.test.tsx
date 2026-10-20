@@ -1,0 +1,70 @@
+import { afterEach,beforeEach,expect,it,vi } from 'vitest';
+import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react';
+import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { Candidates } from '../../pages/recruitment/Candidates';
+import { WorkforceAssignments } from '../../pages/workforce/WorkforceAssignments';
+import { PlatformTraining } from '../../pages/training/PlatformTraining';
+import { api } from '../../services/api';
+vi.mock('../../services/api',()=>({api:{getWorkforceVacancies:vi.fn(),getTrainingStaffContext:vi.fn(),linkTrainingStaff:vi.fn(),listCandidates:vi.fn(),assignPlatformWorker:vi.fn(),listTrainings:vi.fn(),assignQualifiedWorker:vi.fn(),evaluateTraining:vi.fn(),logTrainingProgress:vi.fn()},errorMessage:(e:Error)=>e.message}));
+const candidate={id:'LOGIN-1',registeredWorkerId:'LOGIN-1',candidateReference:'CND-00001',name:'New employee',dept:'DP',email:'new@test.local',employmentType:'PERMANENT',position:'Agent',phone:''};
+const vacancy={code:'JAX-15',name:'Production',categoryCode:'JAX',departments:[{dept:'DP',capacity:2,shifts:{MORNING:{capacity:2,used:0,training:0,production:0,available:2},NIGHT:{capacity:2,used:0,training:0,production:0,available:2}}}]};
+const trainee={id:'TR-1',workerName:'Qualified employee',workerId:'LOGIN-1',candidateReference:'CND-00001',workerType:'PERMANENT',trainingOnly:true,platformCode:'JAX-15',dept:'DP',shift:'MORNING',completedTrainingDays:1,requiredTrainingDays:1,dailyLogs:[{day:1,date:'2026-01-01',status:'COMPLETED'}],trainingStatus:'TRAINING_COMPLETED',evaluation:{result:'PASSED'}};
+beforeEach(()=>{vi.mocked(api.getWorkforceVacancies).mockResolvedValue([vacancy] as any);vi.mocked(api.getTrainingStaffContext).mockResolvedValue({missing:false,workerId:'LOGIN-1',options:[]});vi.mocked(api.listCandidates).mockResolvedValue([candidate] as any);vi.mocked(api.listTrainings).mockResolvedValue([trainee] as any);});
+afterEach(()=>{cleanup();vi.resetAllMocks();});
+function mount(element:React.ReactNode){render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}})}><MemoryRouter>{element}</MemoryRouter></QueryClientProvider>);}
+it('places registered candidates into training and removes them from the candidate table',async()=>{
+  vi.mocked(api.assignPlatformWorker).mockImplementation(async()=>{vi.mocked(api.listCandidates).mockResolvedValue([]);return {} as any;});
+  mount(<Candidates/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Assign training'}));
+  fireEvent.change(await screen.findByLabelText('Training platform'),{target:{value:'JAX-15'}});
+  fireEvent.change(screen.getByLabelText('Training days'),{target:{value:'7'}});
+  fireEvent.change(screen.getByLabelText('Training notes'),{target:{value:'Platform processes'}});
+  fireEvent.click(screen.getByRole('button',{name:'Start training'}));
+  await waitFor(()=>expect(api.assignPlatformWorker).toHaveBeenCalledWith('JAX-15',{workerId:'LOGIN-1',kind:'TRAINING',dept:'DP',shift:'MORNING',trainingDays:7,trainingNotes:'Platform processes'}));
+  await screen.findByText('No candidates waiting for training');
+  expect(screen.queryByRole('button',{name:'Mark Selected'})).not.toBeInTheDocument();
+});
+it('shows radial vacancy hierarchy and preserves the chosen shift when assignment fails',async()=>{
+  vi.mocked(api.assignQualifiedWorker).mockRejectedValue(new Error('This shift is full.'));
+  mount(<WorkforceAssignments/>);
+  expect(await screen.findByRole('progressbar',{name:'JAX-15 morning occupancy'})).toHaveAttribute('aria-valuetext','0 of 2 seats occupied; 2 available');
+  fireEvent.click(screen.getByRole('button',{name:/Night · 2 free/}));
+  await screen.findByRole('option',{name:'Qualified employee · CND-00001'});
+  fireEvent.change(await screen.findByLabelText('Qualified staff member'),{target:{value:'TR-1'}});
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm assignment'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button',{name:'Confirm assignment'}));
+  await screen.findByText('This shift is full.');
+  expect(api.assignQualifiedWorker).toHaveBeenCalledWith('TR-1',{platformCode:'JAX-15',shift:'NIGHT'});
+  expect(screen.getByLabelText('Shift')).toHaveValue('NIGHT');
+});
+it('offers solid Pass, Extend and Fail controls and requires extension days and a reason',async()=>{
+  vi.mocked(api.listTrainings).mockResolvedValue([{...trainee,trainingStatus:'IN_TRAINING',evaluation:null}] as any);
+  mount(<PlatformTraining/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Evaluate'}));
+  expect(screen.getByRole('button',{name:'Pass'})).toHaveClass('bg-green-700','text-white');
+  expect(screen.getByRole('button',{name:'Fail'})).toHaveClass('bg-red-700','text-white');
+  expect(screen.getByRole('button',{name:'Extend'})).toBeDisabled();
+  expect(screen.getByLabelText('Additional days when extending')).toHaveValue(2);
+  fireEvent.change(screen.getByRole('textbox'),{target:{value:'Needs additional practice'}});
+  fireEvent.change(screen.getByLabelText('Additional days when extending'),{target:{value:'3'}});
+  vi.mocked(api.evaluateTraining).mockResolvedValue({...trainee,trainingStatus:'TRAINING_EXTENDED'} as any);
+  fireEvent.click(screen.getByRole('button',{name:'Extend'}));
+  await waitFor(()=>expect(api.evaluateTraining).toHaveBeenCalledWith('TR-1',expect.objectContaining({result:'EXTEND',extensionDays:3,feedback:'Needs additional practice'})));
+});
+it('enables Advance Day and the detail completion action for future scheduled dates',async()=>{
+  const upcoming={...trainee,trainingStatus:'IN_TRAINING',evaluation:null,completedTrainingDays:0,requiredTrainingDays:2,dailyLogs:[{day:1,date:'2099-01-01',status:'SCHEDULED'},{day:2,date:'2099-01-02',status:'SCHEDULED'}]};
+  vi.mocked(api.listTrainings).mockResolvedValue([upcoming] as any);vi.mocked(api.logTrainingProgress).mockResolvedValue({...upcoming,completedTrainingDays:1} as any);
+  mount(<PlatformTraining/>);const advance=await screen.findByRole('button',{name:'Advance Day'});expect(advance).toBeEnabled();
+  fireEvent.click(screen.getByRole('button',{name:'View Progress'}));expect(screen.getByRole('button',{name:'Complete Day 1 Completion'})).toBeEnabled();
+  fireEvent.click(screen.getByRole('button',{name:'Complete Day 1 Completion'}));await waitFor(()=>expect(api.logTrainingProgress).toHaveBeenCalledWith('TR-1',1,expect.any(String)));
+});
+it('offers an explicit registered-staff recovery instead of submitting an orphan training assignment',async()=>{
+  vi.mocked(api.getTrainingStaffContext).mockResolvedValue({missing:true,workerId:null,options:[{id:'REGISTERED-1',name:'Qualified employee',reference:'CND-00002'}]});
+  vi.mocked(api.linkTrainingStaff).mockImplementation(async()=>{vi.mocked(api.getTrainingStaffContext).mockResolvedValue({missing:false,workerId:'REGISTERED-1',options:[]});return {missing:false,workerId:'REGISTERED-1',options:[]};});
+  mount(<WorkforceAssignments/>);fireEvent.click(await screen.findByRole('button',{name:/Night · 2 free/}));await screen.findByRole('option',{name:'Qualified employee · CND-00001'});fireEvent.change(await screen.findByLabelText('Qualified staff member'),{target:{value:'TR-1'}});
+  await screen.findByText('This training is missing its staff record');expect(screen.getByRole('button',{name:'Confirm assignment'})).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Registered staff record'),{target:{value:'REGISTERED-1'}});fireEvent.click(screen.getByLabelText('I confirm this is the same person who completed this training'));fireEvent.change(screen.getByLabelText('Link correction reason'),{target:{value:'Verified original registration and training identity'}});fireEvent.click(screen.getByRole('button',{name:'Link registered staff'}));
+  await waitFor(()=>expect(api.linkTrainingStaff).toHaveBeenCalledWith('TR-1',{workerId:'REGISTERED-1',samePerson:true,reason:'Verified original registration and training identity',expectedWorkerId:'LOGIN-1'}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm assignment'})).toBeEnabled());expect(api.assignQualifiedWorker).not.toHaveBeenCalled();
+});

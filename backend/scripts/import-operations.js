@@ -15,7 +15,8 @@ export async function importOperations(db, { reset = false, backup = true, nodeE
     await client.query('LOCK TABLE users,user_permissions IN SHARE MODE');
     const initialized = (await client.query("SELECT 1 FROM ops_state WHERE key='initialized'")).rows.length;
     if (initialized && !reset) throw new Error('Operational data already imported. Use --reset only to deliberately replace it.');
-    const tables = [...Object.values(collections).map(name => `ops_${name}`), 'ops_state', 'operational_accounts', ...legacyTables];
+    const hasEquipment = (await client.query("SELECT to_regclass('equipment_allocations') AS table_name")).rows[0].table_name;
+    const tables = [...(hasEquipment ? ['equipment_allocations'] : []), ...Object.values(collections).map(name => `ops_${name}`), 'ops_state', 'operational_accounts', ...legacyTables];
     let backupPath;
     if (backup) {
       const saved = { createdAt: new Date().toISOString(), tables: {} };

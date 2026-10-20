@@ -54,7 +54,7 @@ export function Freelancers() {
               rowKey={(r) => r.id}
               onRowClick={(r) => navigate(`/freelancers/${r.id}`)}
               columns={[
-              { key: 'id', header: 'Freelancer', cell: (r) => <IdText>{r.id}</IdText> },
+              { key: 'id', header: 'Freelancer', cell: (r) => <IdText>{r.staffNumber??r.id}</IdText> },
               { key: 'name', header: 'Name', cell: (r) => <span className="font-medium">{r.name}</span> },
               { key: 'dept', header: 'Dept', cell: (r) => <DeptTag dept={r.dept} /> },
               { key: 'prio', header: 'Priority', align: 'right', cell: (r) => r.priority },

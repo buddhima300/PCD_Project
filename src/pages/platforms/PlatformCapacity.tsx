@@ -74,7 +74,7 @@ export function PlatformCapacity() {
                         return (
                           <td key={d} className="px-3 py-2">
                               <button onClick={() => setSel({ p, o })} className="w-32 rounded-lg p-1.5 text-left hover:bg-mist" aria-label={`${p.code} ${d}: ${used(o)} of ${o.capacity}`}>
-                                <CapacityMeter used={used(o)} capacity={o.capacity} pending={mode === 'live' ? o.handoverPending : 0} />
+                                <CapacityMeter used={used(o)} capacity={o.capacity} />
                               </button>
                             </td>);
 
@@ -108,12 +108,11 @@ export function PlatformCapacity() {
                 </p>
               </div>
           }
-            <CapacityMeter label="Live occupancy" used={sel.o.occupiedNow} capacity={sel.o.capacity} size="md" pending={sel.o.handoverPending} />
+            <CapacityMeter label="Live occupancy" used={sel.o.occupiedNow} capacity={sel.o.capacity} size="md" />
             <CapacityMeter label="Morning roster" used={sel.o.morning} capacity={sel.o.capacity} />
             <CapacityMeter label="Night roster" used={sel.o.night} capacity={sel.o.capacity} />
             <dl className="grid grid-cols-2 gap-2 text-center text-xs">
               <div className="rounded-lg bg-canvas p-2"><dt className="text-ink-muted">Available</dt><dd className="text-base font-semibold">{sel.o.available}</dd></div>
-              <div className="rounded-lg bg-canvas p-2"><dt className="text-ink-muted">Handover pending</dt><dd className="text-base font-semibold">{sel.o.handoverPending}</dd></div>
             </dl>
           </div>
         }

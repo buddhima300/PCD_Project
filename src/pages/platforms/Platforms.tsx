@@ -1,3 +1,4 @@
+import { SupervisorHubLinks } from '../system/SupervisorHub';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -31,6 +32,7 @@ export function Platforms() {
         description="Each platform runs its own department mix with its own workstation count."
         actions={<div className="flex flex-wrap items-center gap-2"><PlatformSetupActions compact /><Link to="/capacity"><Button variant="secondary" size="sm" icon={<GaugeIcon className="h-3.5 w-3.5" />}>Capacity matrix</Button></Link></div>} />
       
+      <SupervisorHubLinks />
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search platform code, name or ID" className="w-60" />

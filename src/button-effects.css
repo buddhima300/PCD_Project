@@ -1,0 +1,98 @@
+/* The supplied reflective button effect, adapted to existing control sizes.
+   Pseudo-elements combine .blob1, .inner and .inner::before, so labels,
+   icons, refs, event targets and loading indicators retain their existing DOM. */
+.agency-theme.elite-theme :is(
+  .app-effect-button, .app-primary-action, .app-raised-control,
+  .dashboard-primary-link, button.bg-danger, a.bg-primary-600,
+  button.bg-primary-600, button.bg-green-700:not([role='switch']),
+  button.bg-red-700:not([role='switch']), button.bg-amber-700
+) {
+  --button-radius: 16px;
+  position: relative;
+  isolation: isolate;
+  z-index: 0;
+  border: 0;
+  border-radius: var(--button-radius);
+  background: radial-gradient(circle 80px at 80% -10%, #fff, #181b1b);
+  color: #fff;
+  box-shadow: 0 4px 14px -10px #0051ff66;
+  text-shadow: 0 1px 2px #0008;
+  transition: box-shadow 180ms ease, transform 150ms ease;
+}
+
+.agency-theme.elite-theme :is(
+  .app-effect-button, .app-primary-action, .app-raised-control,
+  .dashboard-primary-link, button.bg-danger, a.bg-primary-600,
+  button.bg-primary-600, button.bg-green-700:not([role='switch']),
+  button.bg-red-700:not([role='switch']), button.bg-amber-700
+)::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: calc(var(--button-radius) - 2px);
+  pointer-events: none;
+  background:
+    radial-gradient(circle 60px at 0% 100%, #3fe9ff99, #0000ff40 55%, transparent),
+    radial-gradient(circle 60px at 0% 100%, #00e1ff1a, #0000ff11, transparent),
+    radial-gradient(circle 80px at 80% -50%, #777, #0f1111);
+  box-shadow: -10px 10px 30px #0051ff2d;
+  transition: opacity 180ms ease, box-shadow 180ms ease;
+}
+
+.agency-theme.elite-theme :is(
+  .app-effect-button, .app-primary-action, .app-raised-control,
+  .dashboard-primary-link, button.bg-danger, a.bg-primary-600,
+  button.bg-primary-600, button.bg-green-700:not([role='switch']),
+  button.bg-red-700:not([role='switch']), button.bg-amber-700
+)::after {
+  content: '';
+  position: absolute;
+  width: 65%;
+  height: 60%;
+  top: 0;
+  right: 0;
+  z-index: -2;
+  border-radius: 120px;
+  box-shadow: 0 0 20px #ffffff38;
+  pointer-events: none;
+  transition: box-shadow 180ms ease;
+}
+
+.agency-theme.elite-theme :is(
+  .app-effect-button, .app-primary-action, .app-raised-control,
+  .dashboard-primary-link, button.bg-danger, a.bg-primary-600,
+  button.bg-primary-600, button.bg-green-700:not([role='switch']),
+  button.bg-red-700:not([role='switch']), button.bg-amber-700
+):hover:not(:disabled):not([aria-disabled='true']) {
+  background: radial-gradient(circle 100px at 80% -10%, #fff, #181b1b);
+  color: #fff;
+  box-shadow: 0 5px 18px -8px #0051ff66;
+}
+
+.agency-theme.elite-theme :is(
+  .app-effect-button, .app-primary-action, .app-raised-control,
+  .dashboard-primary-link, button.bg-danger, a.bg-primary-600,
+  button.bg-primary-600, button.bg-green-700:not([role='switch']),
+  button.bg-red-700:not([role='switch']), button.bg-amber-700
+):hover:not(:disabled):not([aria-disabled='true'])::before {
+  box-shadow: -10px 10px 30px #0051ff45, inset 0 1px #ffffff0d;
+}
+
+html.agency-theme.elite-theme :is(.app-effect-button, .app-primary-action, .app-raised-control):disabled,
+html.agency-theme.elite-theme .dashboard-primary-link[aria-disabled='true'] {
+  background: #4b465c;
+  color: #aaa4ba;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: not-allowed;
+}
+html.agency-theme.elite-theme :is(.app-effect-button, .app-primary-action, .app-raised-control):disabled::before,
+html.agency-theme.elite-theme .dashboard-primary-link[aria-disabled='true']::before { background: #211e2d; box-shadow: none; }
+html.agency-theme.elite-theme :is(.app-effect-button, .app-primary-action, .app-raised-control):disabled::after,
+html.agency-theme.elite-theme .dashboard-primary-link[aria-disabled='true']::after { box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .elite-theme .app-effect-button, .elite-theme .app-effect-button::before,
+  .elite-theme .app-effect-button::after { transition: none; }
+}

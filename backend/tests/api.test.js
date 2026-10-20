@@ -28,6 +28,7 @@ async function login(email) {
 before(async () => {
   engine = new PGlite();
   await engine.exec(await readFile(new URL('../migrations/001_foundation.sql',import.meta.url),'utf8'));
+  await engine.exec(await readFile(new URL('../migrations/005_login_access_controls.sql',import.meta.url),'utf8'));
   // Tests are serial: this adapter pins every transaction to the same embedded engine.
   db = { query: (sql,params) => engine.query(sql,params), connect: async () => ({ query: (sql,params) => engine.query(sql,params), release() {} }) };
   const hash = await hashPassword(pass);
@@ -178,7 +179,9 @@ test('worker suspension invalidates login; stale edits do not mutate worker or a
   assert.equal((await request('/auth/me',{session:employee})).status,200);
   assert.equal((await request(`/workers/${workerId}/status`,{method:'PATCH',session:admin,body:{status:'SUSPENDED',revision:1,reason:'Review'}})).status,200);
   assert.equal((await request('/auth/me',{session:employee})).status,401);
-  assert.equal((await request('/auth/login',{method:'POST',body:{email:'employee@example.com',password:pass}})).status,401);
+  const blocked=await request('/auth/login',{method:'POST',body:{email:'employee@example.com',password:pass}});
+  assert.equal(blocked.status,403);
+  assert.equal(blocked.data.error.code,'ACCOUNT_BLOCKED');
   assert.equal((await request(`/accounts/${employee.user.id}/access`,{method:'PATCH',session:admin,body:{status:'ACTIVE'}})).status,409);
 });
 

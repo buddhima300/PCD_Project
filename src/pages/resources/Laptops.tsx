@@ -16,7 +16,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState, ErrorState, LoadingBlock } from '../../components/ui/States';
 import { fmtDateTime } from '../../utils/format';
 
-const STATUSES: LaptopStatus[] = ['AVAILABLE', 'ASSIGNED', 'HANDOVER_PENDING', 'MAINTENANCE', 'INCIDENT', 'RETIRED'];
+const STATUSES: LaptopStatus[] = ['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'INCIDENT', 'RETIRED'];
 
 export function Laptops({ embedded = false }: { embedded?: boolean }) {
   const [scope, setScope] = useState<Scope>({ category: '', platform: '', dept: '' });
@@ -32,7 +32,7 @@ export function Laptops({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className={compact ? 'equipment-inventory equipment-compact' : 'equipment-inventory'}>
-      {embedded ? <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-base font-semibold">Asset inventory</h2><p className="mt-1 text-xs text-ink-muted">Select a row to inspect assignments and history.</p></div><span className="text-xs text-ink-muted">{q.data ? `${q.data.total} matching assets` : 'Loading assets…'}</span></div> : <PageHeader title="Laptop inventory" description="Every physical laptop with its pool, current shift user, next scheduled user and condition." />}
+      {embedded ? <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-base font-semibold">Asset inventory</h2><p className="mt-1 text-xs text-ink-muted">Select a row to inspect assignments and history.</p></div><span className="text-xs text-ink-muted">{q.data ? `${q.data.total} matching assets` : 'Loading assets…'}</span></div> : <PageHeader title="Laptop inventory" description="Shared platform inventory, device condition and equipment issues." />}
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter by status">
         <button aria-pressed={!status} onClick={() => {setStatus('');setPage(1);}} className={cn('rounded-xl border px-3 py-1.5 text-xs font-medium', !status ? 'border-primary-200 bg-primary-50 text-primary-700' : 'border-line bg-surface text-ink-muted')}>
           All <span className="tabular">{Object.values(counts).reduce((s, n) => s + n, 0)}</span>
@@ -66,7 +66,7 @@ export function Laptops({ embedded = false }: { embedded?: boolean }) {
             ['Model', detail.data.laptop.model], ['Serial', detail.data.laptop.serial], ['Workstation', detail.data.laptop.workstationId],
             ['Platform / department', `${detail.data.laptop.platformCode} / ${detail.data.laptop.dept}`],
             ['Current user', detail.data.laptop.currentUserName ?? detail.data.laptop.currentUserId], ['Current shift', detail.data.laptop.currentShift],
-            ['Next scheduled user', detail.data.laptop.nextUserId ?? detail.data.laptop.nextUserNote], ['Open incident', detail.data.laptop.openIncidentId],
+            ['Open incident', detail.data.laptop.openIncidentId],
           ].map(([label, value]) => <div key={label} className="flex justify-between gap-4 border-b border-line pb-3"><dt className="text-ink-muted">{label}</dt><dd className="text-right">{value ?? '—'}</dd></div>)}</dl>
           {detail.data.laptop.poolId && <Link to={`/pools/${detail.data.laptop.poolId}`} className="mt-4 inline-block text-xs text-primary">Open workstation pool →</Link>}
           <h3 className="mb-3 mt-6 text-sm font-semibold">Recent activity</h3>

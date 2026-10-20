@@ -2,7 +2,7 @@ import { MoonIcon, SunIcon } from 'lucide-react';
 import { useDeviceClock } from '../../hooks/useDeviceClock';
 import { businessTime, liveShift } from '../../utils/shiftTime';
 
-// Live shift indicator. Morning 07:30 → 19:30; handover window opens 19:15.
+// Live shift indicator. Morning 07:30 → 19:30; Night 19:30 → 07:30.
 export function ShiftClock() {
   const now = useDeviceClock();
   const current = liveShift(now);

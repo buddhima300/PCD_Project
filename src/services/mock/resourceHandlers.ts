@@ -4,7 +4,7 @@ import type {
   ChecklistResult, DeptCode, Handover, HandoverStatus, Incident, IncidentStatus, Laptop, LaptopStatus, Paged, PoolSummary, Severity } from
 '../../types/domain';
 import { ApiError, currentAuth, requireRole, respond } from './core';
-import { db, pushAudit } from './db';
+import { db, pushAudit, poolIdOf } from './db';
 import { allPools, paginate, poolSummary, textMatch } from './selectors';
 import { businessDate, handoverInstant } from '../../utils/shiftTime';
 
@@ -95,13 +95,14 @@ export const resourceApi = {
   respond(() => {
     requireRole('SUPERVISOR', 'EMPLOYEE', 'FREELANCER');
     const lap = db.laptops.find((l) => l.poolId === id);
-    if (!lap) throw new ApiError('NOT_FOUND', `Workstation pool ${id} does not exist.`, 404);
-    const p = db.platforms.find((x) => x.code === lap.platformCode)!;
+    const p = db.platforms.find(x => x.code === lap?.platformCode || Object.keys(x.departments).some(d => poolIdOf(x.code,d as DeptCode) === id));
+    const dept = lap?.dept ?? Object.keys(p?.departments ?? {}).find(d => poolIdOf(p!.code,d as DeptCode) === id) as DeptCode;
+    if (!p || !dept) throw new ApiError('NOT_FOUND', `Workstation pool ${id} does not exist.`, 404);
     return {
-      pool: poolSummary(p, lap.dept),
+      pool: poolSummary(p, dept),
       laptops: db.laptops.filter((l) => l.poolId === id).sort((a, b) => String(a.workstationId ?? 'ZZ').localeCompare(String(b.workstationId ?? 'ZZ'))),
       handovers: db.handovers.filter((h) => h.poolId === id).sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt)),
-      incidents: db.incidents.filter((i) => i.platformCode === p.code && i.dept === lap.dept)
+      incidents: db.incidents.filter((i) => i.platformCode === p.code && i.dept === dept)
     };
   }),
 

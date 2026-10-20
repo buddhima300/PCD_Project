@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRightIcon, SparklesIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { backend } from '../../services/backend';
+import { api } from '../../services/api';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { PermissionDenied } from '../../components/ui/States';
 import type { DeptCode, InterviewResult } from '../../types/domain';
@@ -14,6 +15,8 @@ import { deptNames } from '../../utils/format';
 
 export function RegisterWizard() {
   const navigate = useNavigate();
+  const [params]=useSearchParams();
+  const recoveryTraining=params.get('training')??'';
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
@@ -27,6 +30,9 @@ export function RegisterWizard() {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const canRegister = useSessionStore(state => state.permissions.includes('accounts.manage'));
+  const recovery=useQuery({queryKey:['training-staff-context',recoveryTraining],queryFn:()=>api.getTrainingStaffContext(recoveryTraining),enabled:!!recoveryTraining&&canRegister});
+  const prefilled=useRef('');
+  useEffect(()=>{const source=recovery.data?.registration;if(!source||prefilled.current===recoveryTraining)return;prefilled.current=recoveryTraining;setName(source.name);setEmail(source.email);setPhone(source.phone);setDept(source.dept);setEmploymentType(source.employmentType);setPosition(source.position);setNotes('Registration to restore the staff record for existing completed training.');},[recovery.data,recoveryTraining]);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -41,7 +47,7 @@ export function RegisterWizard() {
         position,
         notes
       }),
-    onSuccess: ({ candidate }) => {
+    onSuccess: ({ candidate, user }) => {
       setPassword(''); setConfirmation('');
       toast.success(`Candidate ${candidate.name} registered`, {
         description: 'Staff and login created together. They can sign in with this email and initial password, then change it under My profile.'
@@ -52,7 +58,9 @@ export function RegisterWizard() {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['freelancers'] });
       queryClient.invalidateQueries({ queryKey: ['backend'] });
-      navigate('/placement-queue');
+      queryClient.invalidateQueries({queryKey:['training-staff-context']});
+      queryClient.invalidateQueries({queryKey:['trainings']});
+      navigate(recoveryTraining?'/training':'/candidates');
     },
     onError: (err: any) => {
       toast.error('Registration failed', { description: err.message || 'Could not register candidate.' });
@@ -64,7 +72,7 @@ export function RegisterWizard() {
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader
         title="Register staff"
-        description="Register staff and create their login together, then continue to the existing placement workflow."
+        description="Register staff and create their login together, then start training before assigning them to production."
       />
 
       <Card>
@@ -206,11 +214,10 @@ export function RegisterWizard() {
 
           <div className="rounded-xl border border-primary-100 bg-primary-50/50 p-3 text-xs text-primary-950">
             <p className="font-semibold flex items-center gap-1.5">
-              <SparklesIcon className="h-4 w-4 text-primary" /> Vacancy-Driven Placement Workflow:
+              <SparklesIcon className="h-4 w-4 text-primary" /> Staff onboarding workflow:
             </p>
             <p className="mt-1 text-ink-muted">
-              After registration, the supervisor will be taken directly to the Platform Placement Queue to match this recruit
-              with an authentic production platform vacancy.
+              After registration, start training, record progress and evaluate the staff member. After they pass, assign a production platform and shift.
             </p>
           </div>
 
@@ -223,7 +230,7 @@ export function RegisterWizard() {
               loading={createMutation.isPending}
               icon={<ArrowRightIcon className="h-4 w-4" />}
             >
-              Register & Proceed to Placement
+              Register & Review Candidate
             </Button>
           </div>
         </form>

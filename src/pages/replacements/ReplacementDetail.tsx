@@ -143,7 +143,7 @@ export function ReplacementDetail() {
           <Card>
               <CardHeader title="Workstation pool allocation" description={`${pool.platformCode} / ${pool.dept}`} />
               <div className="space-y-3 p-5 pt-3">
-                <CapacityMeter label="Seats occupied now" used={pool.occupied} capacity={pool.capacity} pending={pool.handoverPending} />
+                <CapacityMeter label="Seats occupied now" used={pool.occupied} capacity={pool.capacity} />
                 <p className="text-[13px]">Allocated workstation: <IdText className="font-semibold">{r.workstationId ?? 'pending assignment'}</IdText></p>
                 {isOps && <Link to={`/pools/${pool.id}`} className="text-xs font-medium text-primary hover:underline">Open pool</Link>}
               </div>

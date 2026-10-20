@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { demoUsers } from '../../data/reference';
 import { SERVER_NOW, TODAY } from '../../utils/clock';
+import { businessDate } from '../../utils/shiftTime';
 import type {
   AuditEntry, DeptCode, Handover, Incident, Laptop, NotificationItem, OffDayRequest, Paged, PlatformSummary, PoolSummary, Replacement,
   RotationCycle, SessionUser, ShiftCode } from
@@ -49,7 +50,7 @@ export interface OpsDashboard {
 
 export interface MyWork {
   role: 'EMPLOYEE' | 'FREELANCER';
-  person: {id: string;name: string;dept: DeptCode;position?: string;priority?: number;compatibleCategories?: string[];};
+  person: {id: string;name: string;dept: DeptCode;position?: string;priority?: number;compatibleCategories?: string[];qualifiedForProduction?: boolean;};
   platform: PlatformSummary | null;
   pool: PoolSummary | null;
   shift: ShiftCode | null;
@@ -104,19 +105,20 @@ export const systemApi = {
       }
     }
     const active = pools.filter((p) => p.platformStatus === 'ACTIVE');
+    const freelancers = db.freelancers.filter(worker => (!f.dept || worker.dept === f.dept) && (!f.category || worker.compatibleCategories.includes(f.category)) && (!f.platform || worker.currentPlatform === f.platform || db.replacements.some(replacement => replacement.freelancerId === worker.id && replacement.platformCode === f.platform && ['ASSIGNED','CONFIRMED'].includes(replacement.status))));
     return {
       currentShift: { code: 'MORNING', ...shiftWindow(TODAY, 'MORNING') },
       kpis: {
         permanentEmployees: emps.length,
-        freelancers: db.freelancers.filter((x) => !f.dept || x.dept === f.dept).length,
+        freelancers: freelancers.length,
         totalPlatforms: platforms.length,
         activePlatforms: platforms.filter((p) => p.status === 'ACTIVE').length,
-        morningWorkforce: emps.filter((e) => e.shift === 'MORNING').length,
-        nightWorkforce: emps.filter((e) => e.shift === 'NIGHT').length,
+        morningWorkforce: platforms.filter(p => p.status === 'ACTIVE' && p.lifecycle !== 'SETUP').reduce((sum,p) => sum + p.morningWorkforce,0),
+        nightWorkforce: platforms.filter(p => p.status === 'ACTIVE' && p.lifecycle !== 'SETUP').reduce((sum,p) => sum + p.nightWorkforce,0),
         currentWorkforce: active.reduce((s, p) => s + p.occupied, 0),
         totalWorkstations: active.reduce((s, p) => s + p.capacity, 0),
         availableCapacity: active.reduce((s, p) => s + p.available, 0),
-        availableFreelancers: db.freelancers.filter((x) => x.status === 'ACTIVE' && (!f.dept || x.dept === f.dept) && db.availability[x.id]?.[TODAY]?.NIGHT === 'AVAILABLE').length,
+        availableFreelancers: freelancers.filter((x) => x.status === 'ACTIVE' && db.availability[x.id]?.[TODAY]?.NIGHT === 'AVAILABLE').length,
         pendingReplacements: reps.filter((r) => ['PENDING', 'SEARCHING', 'FAILED'].includes(r.status)).length,
         failedReplacements: reps.filter((r) => r.status === 'FAILED').length,
         fullPools: active.filter((p) => p.occupied >= p.capacity).length,
@@ -153,7 +155,7 @@ export const systemApi = {
       const used = offs.filter((o) => o.date.startsWith(TODAY.slice(0, 7))).length;
       const lap = db.laptops.find((l) => l.currentUserId === e.id || l.nextUserId === e.id) ?? null;
       return {
-        role: 'EMPLOYEE', person: { id: e.id, name: e.name, dept: e.dept, position: e.position }, platform: p ? summarizePlatform(p) : null, pool: p ? poolSummary(p, e.dept) : null,
+        role: 'EMPLOYEE', person: { id: e.id, name: e.name, dept: e.dept, position: e.position, qualifiedForProduction:e.qualifiedForProduction }, platform: p ? summarizePlatform(p) : null, pool: p ? poolSummary(p, e.dept) : null,
         shift: p ? e.shift : null, nextShift: p ? nextShift : null, currentWindow: p ? shiftWindow(TODAY, e.shift) : null, nextWindow: p ? shiftWindow(next, nextShift) : null, workstation: lap, handovers: myHandovers,
         upcomingOffDays: offs.filter((o) => o.date > TODAY).sort((x, y) => x.date.localeCompare(y.date)), offDaysRemaining: Math.max(0, OFFDAY_MONTHLY_ALLOWANCE - used), offDaysUsed: used,
         plannedCover: db.replacements.filter((r) => r.absentEmployeeId === e.id && r.date >= TODAY && r.status !== 'CANCELLED'), assignments: [], currentAssignment: null,
@@ -165,11 +167,13 @@ export const systemApi = {
     const fl = toFreelancer(f);
     const assignments = db.replacements.filter((r) => r.freelancerId === f.id && r.status !== 'CANCELLED' && r.shiftEnd >= format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss")).sort((x, y) => x.shiftStart.localeCompare(y.shiftStart));
     const current = assignments[0] ?? null;
-    const p = current ? db.platforms.find((x) => x.code === current.platformCode)! : null;
+    const placement = db.trainingAssignments.find(t => t.workerId === f.id && t.trainingStatus !== 'TRAINING_FAILED' && (t.productionPlatformCode ?? t.platformCode) === f.currentPlatform);
+    const assignedShift = current?.shift ?? placement?.productionShift ?? placement?.shift ?? null;
+    const p = db.platforms.find(x => x.code === (current?.platformCode ?? f.currentPlatform)) ?? null;
     const lap = db.laptops.find((l) => l.nextUserId === f.id || l.currentUserId === f.id) ?? null;
     return {
-      role: 'FREELANCER', person: { id: f.id, name: f.name, dept: f.dept, priority: f.priority, compatibleCategories: f.compatibleCategories }, platform: p ? summarizePlatform(p) : null, pool: p && current ? poolSummary(p, current.dept) : null,
-      shift: current?.shift ?? null, nextShift: assignments[1]?.shift ?? null, currentWindow: current ? { start: current.shiftStart, end: current.shiftEnd } : null,
+      role: 'FREELANCER', person: { id: f.id, name: f.name, dept: f.dept, priority: f.priority, compatibleCategories: f.compatibleCategories, qualifiedForProduction:f.qualifiedForProduction }, platform: p ? summarizePlatform(p) : null, pool: p ? poolSummary(p, current?.dept ?? f.dept) : null,
+      shift: assignedShift, nextShift: assignments[1]?.shift ?? null, currentWindow: current ? { start: current.shiftStart, end: current.shiftEnd } : assignedShift ? shiftWindow(businessDate(),assignedShift) : null,
       nextWindow: assignments[1] ? { start: assignments[1].shiftStart, end: assignments[1].shiftEnd } : null, workstation: lap, handovers: myHandovers,
       upcomingOffDays: [], offDaysRemaining: 0, offDaysUsed: 0, plannedCover: [], assignments, currentAssignment: current, workloadUsed: fl.workloadUsed, workloadLimit: WORKLOAD_LIMIT,
       availability: Array.from({ length: 7 }, (_, i) => plusDays(TODAY, i)).map((d) => ({ date: d, ...(db.availability[f.id]?.[d] ?? { MORNING:'UNAVAILABLE' as const, NIGHT:'UNAVAILABLE' as const }) })), rotation
@@ -179,7 +183,7 @@ export const systemApi = {
   listNotifications: (q: {unreadOnly?: boolean;type?: string;}): Promise<{items: NotificationItem[];unread: number;}> =>
   respond(() => {
     const a = currentAuth();
-    const mine = db.notifications.filter((n) => n.recipientRoles.includes(a.role) && (!n.recipientId || n.recipientId === a.userId));
+    const mine = db.notifications.filter((n) => n.type !== 'HANDOVER_REQUIRED' && n.recipientRoles.includes(a.role) && (!n.recipientId || n.recipientId === a.userId));
     const items = mine.filter((n) => (!q.unreadOnly || !n.read) && (!q.type || n.type === q.type)).sort((x, y) => y.createdAt.localeCompare(x.createdAt));
     return { items, unread: mine.filter((n) => !n.read).length };
   }),

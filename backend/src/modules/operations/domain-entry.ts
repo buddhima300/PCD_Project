@@ -12,15 +12,17 @@ import { systemApi } from '../../../../src/services/mock/systemHandlers';
 import { reportApi } from '../../../../src/services/mock/reportHandlers';
 import { placementApi } from '../../../../src/services/mock/placementHandlers';
 import { disciplinaryApi, exportDisciplinaryState, importDisciplinaryState } from '../../../../src/services/mock/disciplinaryHandlers';
-import { attendanceApi } from '../../../../src/services/mock/attendanceHandlers';
+import { attendanceApi, useExplicitEquipmentScheduling } from '../../../../src/services/mock/attendanceHandlers';
 import { profileApi } from '../../../../src/services/mock/profileHandlers';
 import { mockBreakApi, exportBreakState, importBreakState } from '../../../../src/features/break-management/mock';
 
 mockConfig.latencyMs = 0;
+useExplicitEquipmentScheduling();
 const { login: _login, ...system } = systemApi;
 export const methods = { ...platformApi, ...platformSetupApi, ...workforceApi, ...schedulingApi, ...replacementApi, ...resourceApi, ...system, ...reportApi, ...placementApi, ...disciplinaryApi, ...attendanceApi, ...profileApi };
 export const breaks = mockBreakApi;
 export { setAuthContext };
+export { setOperationalClock } from '../../../../src/utils/clock';
 export function snapshot() {
   const { seq, ...records } = db;
   return { ...records, sequences: exportSequences(), disciplinary: exportDisciplinaryState(), breaks: exportBreakState(), profile: JSON.parse(localStorage.getItem('relay-profile-v1') ?? '{"photos":{},"events":[]}') };

@@ -6,9 +6,9 @@ import type { BreakSnapshot } from '../../features/break-management/contracts';
 const snapshot = (monitor = true, policy = true, view = true) => ({ capabilities: { monitor, policy, view, export: false } }) as BreakSnapshot;
 
 describe('supervisor information architecture', () => {
-  it('has six unique primary destinations and preserves both staff navigations', () => {
-    expect(navByRole.SUPERVISOR).toHaveLength(6);
-    expect(new Set(navByRole.SUPERVISOR.map(i => i.to)).size).toBe(6);
+  it('has five unique primary destinations and preserves both staff navigations', () => {
+    expect(navByRole.SUPERVISOR).toHaveLength(5);
+    expect(new Set(navByRole.SUPERVISOR.map(i => i.to)).size).toBe(5);
     expect(navByRole.EMPLOYEE).toEqual(legacyNavByRole.EMPLOYEE);
     expect(navByRole.FREELANCER).toEqual(legacyNavByRole.FREELANCER);
   });
@@ -25,7 +25,7 @@ describe('supervisor information architecture', () => {
     expect(supervisorAreaFor('/my/assignments')).toBeUndefined();
   });
   it('fails closed for breaks and respects monitor and policy permissions', () => {
-    const area = supervisorAreas.find(area => area.id === 'operations');
+    const area = supervisorAreas.find(area => area.id === 'workforce');
     if (!area) throw new Error('Operations area is missing');
     expect(areaLinks(area).filter(i => i.to.startsWith('/breaks'))).toEqual([]);
     expect(areaLinks(area, snapshot(false)).filter(i => i.to.startsWith('/breaks'))).toEqual([]);

@@ -5,6 +5,7 @@ import { platformApi } from './platformHandlers';
 import { platformSetupApi } from './platformSetupHandlers';
 import { resourceApi } from './resourceHandlers';
 import { attendanceApi } from './attendanceHandlers';
-export const api = { ...platformApi, ...platformSetupApi, ...resourceApi, ...attendanceApi };
+import { systemApi } from './systemHandlers';
+export const api = { ...platformApi, ...platformSetupApi, ...resourceApi, ...attendanceApi, ...systemApi };
 export { ApiError };
 export const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Request failed.';

@@ -23,7 +23,7 @@ export function workforceService(db) {
         if (worker.revision !== revision) throw new ApiError(409, 'CONFLICT', 'Worker changed. Reload before editing.');
         const result = await client.query('UPDATE workers SET status=$1,revision=revision+1 WHERE id=$2 RETURNING *', [status, id]);
         if (worker.user_id && ['SUSPENDED','INACTIVE'].includes(status)) {
-          await client.query("UPDATE users SET status='LOCKED',updated_at=now() WHERE id=$1", [worker.user_id]);
+          await client.query("UPDATE users SET status='LOCKED',access_revision=access_revision+1,access_changed_at=now(),access_changed_by=$2,access_change_reason=$3,updated_at=now() WHERE id=$1", [worker.user_id,actor.id,reason]);
           await client.query('DELETE FROM sessions WHERE user_id=$1', [worker.user_id]);
         }
         await audit(client, actor.id, 'WORKER_STATUS_CHANGED', 'worker', id, { previous: worker.status, next: status, reason });

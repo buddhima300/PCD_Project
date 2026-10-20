@@ -15,6 +15,7 @@ export interface PlatformCreateInput {
 }
 
 export interface PlatformCapacityInput {
+  expectedRevision?: number;
   departments: DeptCapacity;
   staffingTargets: NonNullable<Platform['staffingTargets']>;
 }
@@ -25,4 +26,5 @@ export interface PlatformAssignmentInput {
   dept: DeptCode;
   shift: ShiftCode;
   trainingDays?: number;
+  trainingNotes?: string;
 }

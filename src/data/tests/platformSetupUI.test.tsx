@@ -21,12 +21,12 @@ it('creates a setup platform, saves targets, skips staffing and explicitly activ
   fireEvent.change(screen.getByLabelText('Platform code'), { target: { value: 'KANE-999' } });
   fireEvent.change(screen.getByLabelText('Platform name'), { target: { value: 'New operations' } });
   fireEvent.click(screen.getByRole('button', { name: 'Create platform in setup' }));
-  await screen.findByLabelText('Physical seats', { selector: '#seats-DP' });
+  await screen.findByLabelText('Shared devices', { selector: '#seats-DP' });
   expect(db.platforms.find(p => p.code === 'KANE-999')?.lifecycle).toBe('SETUP');
-  fireEvent.change(screen.getByLabelText('Physical seats', { selector: '#seats-DP' }), { target: { value: '2' } });
+  fireEvent.change(screen.getByLabelText('Shared devices', { selector: '#seats-DP' }), { target: { value: '2' } });
   fireEvent.change(screen.getByLabelText('Morning staffing target', { selector: '#target-DP-MORNING' }), { target: { value: '1' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save capacity & continue' }));
-  await screen.findByLabelText('Assignment type');
+  await screen.findByText('Staffing is managed in Workforce');
   fireEvent.click(screen.getByRole('button', { name: 'Review platform' }));
   await screen.findByRole('button', { name: 'Activate platform' });
   fireEvent.click(screen.getByRole('button', { name: 'Activate platform' }));

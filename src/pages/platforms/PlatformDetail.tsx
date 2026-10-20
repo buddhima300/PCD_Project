@@ -17,6 +17,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { PlatformSetupActions, Coverage } from '../../components/platform/PlatformSetup';
+import { AllocationBars } from '../../components/platform/AllocationBars';
 import { api } from '../../services/api';
 import { TODAY } from '../../utils/clock';
 import { deptNames, fmtDate, fmtDateTime } from '../../utils/format';
@@ -29,13 +30,12 @@ export function PlatformDetail() {
   const role = useSessionStore((s) => s.user?.role);
   const [tab, setTab] = useState<Tab>('overview');
   const [date, setDate] = useState(TODAY);
-  const q = useQuery({ queryKey: ['platform', code], queryFn: () => api.getPlatform(code) });
+  const q = useQuery({ queryKey: ['platform', code], queryFn: () => api.getPlatform(code), refetchInterval:15000 });
   const emps = useQuery({ queryKey: ['employees', { platform: code, pageSize: 200 }], queryFn: () => api.listEmployees({ platform: code, pageSize: 200 }), enabled: tab === 'workforce' });
   const reps = useQuery({ queryKey: ['replacements', { platform: code }], queryFn: () => api.listReplacements({ platform: code }), enabled: tab === 'freelancers' || tab === 'overview' });
   const laps = useQuery({ queryKey: ['laptops', { platform: code, pageSize: 200 }], queryFn: () => api.listLaptops({ platform: code, pageSize: 200 }), enabled: tab === 'workstations' });
   const incs = useQuery({ queryKey: ['incidents', { platform: code }], queryFn: () => api.listIncidents({ platform: code }), enabled: tab === 'incidents' });
   const audit = useQuery({ queryKey: ['config-history', code], queryFn: () => api.getConfigHistory(code), enabled: tab === 'audit' });
-  const positions = useQuery({ queryKey: ['platform-positions', code], queryFn: () => api.getPlatformPositions(code) });
   const trainings = useQuery({ queryKey: ['trainings', { platform: code }], queryFn: () => api.listTrainings({ platform: code }) });
 
   if (q.isPending) return <LoadingBlock rows={8} />;
@@ -71,7 +71,7 @@ export function PlatformDetail() {
       {tab === 'overview' &&
       <div className="grid gap-4 xl:grid-cols-3">
           <Card className="xl:col-span-2">
-            <CardHeader title="Capacity by department" description="Configured workstations = employees per active shift" />
+            <CardHeader title="Capacity by department" description={`Staffing and equipment · ${p.equipmentDate ?? ''} · ${p.equipmentShift?.toLowerCase() ?? 'current'} shift`} />
             <div className="grid gap-3 p-5 sm:grid-cols-2">
               {p.occupancy.map((o) =>
             <Link key={o.dept} to={`/pools/${o.poolId}`} className="rounded-xl border border-line p-4 transition-colors duration-150 hover:border-primary-200">
@@ -81,7 +81,7 @@ export function PlatformDetail() {
                     </p>
                     <span className="text-xs text-ink-muted">{o.capacity} seats</span>
                   </div>
-                  <CapacityMeter label="Live" used={o.occupiedNow} capacity={o.capacity} size="md" pending={o.handoverPending} />
+                  {o.coverage ? <AllocationBars label="Current shift" coverage={o.coverage[p.equipmentShift ?? 'MORNING']} /> : <CapacityMeter label="Live" used={o.occupiedNow} capacity={o.capacity} size="md" />}
                   <div className="mt-2 grid grid-cols-2 gap-3">
                     <CapacityMeter label="Morning" used={o.morning} capacity={o.capacity} />
                     <CapacityMeter label="Night" used={o.night} capacity={o.capacity} />
@@ -90,63 +90,19 @@ export function PlatformDetail() {
             )}
             </div>
             <div className="flex flex-wrap gap-6 border-t border-line px-5 py-3 text-sm">
-              <span>Total <b className="tabular">{p.currentWorkforce} / {p.totalWorkstations}</b> occupied</span>
+              <span>Total <b className="tabular">{p.occupancy.reduce((n,o) => n+o.occupiedNow,0)} / {p.totalWorkstations}</b> confirmed live</span>
               <span className="flex items-center gap-1"><SunIcon className="h-4 w-4 text-warning-600" /> Morning <b className="tabular">{p.morningWorkforce} / {p.occupancy.reduce((sum, o) => sum + (p.staffingTargets?.[o.dept]?.MORNING ?? o.capacity), 0)}</b></span>
               <span className="flex items-center gap-1"><MoonIcon className="h-4 w-4 text-primary" /> Night <b className="tabular">{p.nightWorkforce} / {p.occupancy.reduce((sum, o) => sum + (p.staffingTargets?.[o.dept]?.NIGHT ?? o.capacity), 0)}</b></span>
             </div>
 
             {/* Platform Workforce Positions & Trainee Status */}
             {p.staffingTargets && <div className="border-t border-line p-5"><Coverage platform={p} trainings={trainings.data ?? []} /></div>}
-            <div className="border-t border-line p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-ink">Workforce positions & on-platform trainees</h3>
-                  <p className="text-xs text-ink-muted">Discrete position allocations and new recruit on-the-job training</p>
-                </div>
-                <Link to="/placement-queue">
-                  <Button size="xs" variant="secondary">Placement queue</Button>
-                </Link>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {(positions.data ?? []).map((pos) => {
-                  const trn = (trainings.data ?? []).find((t) => t.positionCode === pos.positionCode && (t.trainingStatus === 'IN_TRAINING' || t.trainingStatus === 'TRAINING_EXTENDED'));
-                  return (
-                    <div key={pos.id} className="rounded-xl border border-line bg-mist/30 p-3 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-ink">{pos.positionCode}</span>
-                        <StatusBadge status={pos.status} size="xs" />
-                      </div>
-                      <div className="mt-1.5 text-ink-muted">
-                        {pos.status === 'ACTIVE' && (
-                          <p className="font-medium text-ink truncate">{pos.assignedWorkerName || pos.assignedWorkerId}</p>
-                        )}
-                        {pos.status === 'TRAINING' && (
-                          <div className="space-y-0.5">
-                            <p className="font-semibold text-primary-700 truncate">{pos.assignedWorkerName || pos.assignedWorkerId}</p>
-                            {trn && (
-                              <p className="text-[11px] text-ink-subtle">
-                                Day {trn.completedTrainingDays} / {trn.requiredTrainingDays} · Ends {fmtDate(trn.expectedCompletionDate, 'MMM d')}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                        {pos.status === 'VACANT' && (
-                          <p className="font-semibold text-emerald-700">Open Vacancy</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </Card>
           <Card>
             <CardHeader title="Operations" />
             <dl className="divide-y divide-line px-5 py-2">
               {[
             ['Pending replacements', p.pendingReplacements, 'freelancers'],
-            ['Handover pending tonight', p.pendingHandovers, 'workstations'],
             ['Open incidents', p.activeIncidents, 'incidents'],
             ['Off-day capacity alerts (14d)', p.offDayAlerts, 'offdays'],
             ['Available workstations now', p.availableWorkstations, 'workstations']].
@@ -245,8 +201,8 @@ export function PlatformDetail() {
             {pools.map((pl) =>
           <Link key={pl.id} to={`/pools/${pl.id}`} className="app-panel rounded-3xl border border-white/90 bg-white/80 p-4 backdrop-blur-xl hover:border-primary-200">
                 <p className="text-sm font-semibold">{pl.platformCode} / {pl.dept}</p>
-                <div className="mt-2"><CapacityMeter used={pl.occupied} capacity={pl.capacity} pending={pl.handoverPending} /></div>
-                <p className="mt-2 text-xs text-ink-muted">{pl.available} available · {pl.handoverPending} handover · {pl.incidents} incidents</p>
+                <div className="mt-2"><CapacityMeter used={pl.occupied} capacity={pl.capacity} /></div>
+                <p className="mt-2 text-xs text-ink-muted">{pl.available} available · {pl.incidents} incidents</p>
               </Link>
           )}
           </div>
@@ -287,7 +243,6 @@ export function PlatformDetail() {
           ['platform-roster', 'Platform roster'],
           ['offday-utilization', 'Off-day utilisation'],
           ['replacement-history', 'Replacement history'],
-          ['handover-history', 'Laptop handover history'],
           ['platform-incidents', 'Platform incidents']].
           map(([k, l]) =>
           <Link key={k} to={`/reports?report=${k}&platform=${p.code}`} className="rounded-xl border border-line px-4 py-3 text-sm font-medium hover:border-primary-200 hover:text-primary">

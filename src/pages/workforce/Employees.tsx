@@ -17,10 +17,14 @@ import { api, type EmployeeQuery } from '../../services/api';
 import type { Employee } from '../../types/domain';
 import { cn } from '../../utils/cn';
 import { Dialog } from '../../components/ui/Dialog';
+import { EmployeePlatformAction } from '../../components/placement/EmployeePlatformAction';
+import { OffDayBalance } from '../../components/offday/OffDayBalance';
+import { EmployeeCareerSummary } from '../../components/placement/EmployeeCareer';
+import { EmployeeLoginToggle } from '../../components/placement/EmployeeLoginToggle';
 import { fmtDate } from '../../utils/format';
 
 const PAGE_SIZE = 100;
-const COLS = 'grid-cols-[110px_minmax(160px,1.4fr)_90px_60px_minmax(150px,1.2fr)_96px_minmax(150px,1fr)_90px_100px_90px]';
+const COLS = 'grid-cols-[110px_minmax(160px,1.4fr)_90px_60px_minmax(150px,1.2fr)_96px_90px_210px_90px]';
 
 const headers: {key: keyof Employee;label: string;}[] = [
 { key: 'id', label: 'Employee ID' },
@@ -29,7 +33,6 @@ const headers: {key: keyof Employee;label: string;}[] = [
 { key: 'dept', label: 'Dept' },
 { key: 'position', label: 'Position' },
 { key: 'shift', label: 'Shift' },
-{ key: 'currentWorkstationId', label: 'Workstation' },
 { key: 'offDaysUsed', label: 'Off-days' },
 { key: 'status', label: 'Employment' },
 { key: 'accountStatus', label: 'Account' }];
@@ -76,7 +79,7 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
         <EmptyState title="No employees match these filters" description="Try another platform, department or search term." /> :
 
         <div className="scroll-thin overflow-x-auto">
-            <div role="table" aria-label="Employees" aria-rowcount={q.data.total} className="min-w-[1180px]">
+            <div role="table" aria-label="Employees" aria-rowcount={q.data.total} className="min-w-[1170px]">
               <div role="rowgroup">
                 <div role="row" className={cn('grid border-b border-line bg-mist/70', COLS)}>
                   {headers.map((h) =>
@@ -102,20 +105,19 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
                       role="row"
                       tabIndex={0}
                       onClick={() => setSelectedId(e.id)}
-                      onKeyDown={(ev) => ev.key === 'Enter' && setSelectedId(e.id)}
+                      onKeyDown={(ev) => { if (ev.target === ev.currentTarget && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); setSelectedId(e.id); } }}
                       className={cn('absolute left-0 right-0 grid cursor-pointer items-center border-b border-line text-[13px] hover:bg-primary-50/50 focus-visible:bg-primary-50 focus-visible:outline-none', COLS)}
                       style={{ height: v.size, transform: `translateY(${v.start}px)` }}>
                       
-                        <div role="cell" className="px-3"><IdText>{e.id}</IdText></div>
+                        <div role="cell" className="px-3"><IdText>{e.staffNumber??e.id}</IdText></div>
                         <div role="cell" className="truncate px-3 font-medium">{e.name}</div>
-                        <div role="cell" className="px-3">{e.platformCode}</div>
+                        <div role="cell" className="px-3">{e.platformCode || <span className="text-ink-subtle">Unassigned</span>}</div>
                         <div role="cell" className="px-3"><DeptTag dept={e.dept} /></div>
                         <div role="cell" className="truncate px-3 text-ink-muted">{e.position}</div>
-                        <div role="cell" className="px-3"><ShiftTag shift={e.shift} /></div>
-                        <div role="cell" className="truncate px-3">{e.currentWorkstationId ? <IdText>{e.currentWorkstationId}</IdText> : <span className="text-ink-subtle">—</span>}</div>
+                        <div role="cell" className="px-3"><ShiftTag shift={e.shift} filled /></div>
                         <div role="cell" className="px-3 tabular">{e.offDaysUsed} / {e.offDaysAllowance}</div>
-                        <div role="cell" className="px-3"><StatusBadge status={e.status} size="xs" /></div>
-                        <div role="cell" className="px-3"><StatusBadge status={e.accountStatus} size="xs" /></div>
+                        <div role="cell" className="flex items-center gap-2 px-3"><StatusBadge status={e.status} filled size="xs" /><EmployeeLoginToggle employee={e} /></div>
+                        <div role="cell" className="px-3">{e.loginAccess?.hasAccount === false ? <span className="text-xs text-ink-subtle">No login</span> : <StatusBadge status={e.accountStatus} filled size="xs" />}</div>
                       </div>);
 
                 })}
@@ -129,12 +131,12 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
       <Dialog open={!!selectedId} onClose={() => setSelectedId(null)} placement="right" title={detail.data?.employee.name ?? selectedId ?? 'Employee details'} description={selectedId ?? undefined} footer={selectedId && <Link to={`/employees/${selectedId}`} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Open full record</Link>}>
         {detail.isPending ? <LoadingBlock rows={5} /> : detail.isError ? <ErrorState error={detail.error} onRetry={() => detail.refetch()} /> : detail.data && <>
           <div className="mb-5 flex gap-2"><StatusBadge status={detail.data.employee.status} /><StatusBadge status={detail.data.employee.accountStatus} /></div>
-          <h3 className="mb-3 text-sm font-semibold">Operational assignment</h3><dl className="space-y-3 text-sm">{[
-            ['Platform', detail.data.employee.platformCode], ['Department', detail.data.employee.dept], ['Position', detail.data.employee.position],
-            ['Shift', detail.data.employee.shift], ['Workstation', detail.data.employee.currentWorkstationId],
+          <OffDayBalance detail={detail.data} /><EmployeeCareerSummary employee={detail.data.employee} /><EmployeePlatformAction key={detail.data.employee.id} employee={detail.data.employee} /><h3 className="mb-3 text-sm font-semibold">Operational assignment</h3><dl className="space-y-3 text-sm">{[
+            ['Platform', detail.data.employee.platformCode || 'Unassigned'], ['Department', detail.data.employee.dept], ['Position', detail.data.employee.position],
+            ['Shift', detail.data.employee.shift], ['Shared device pool', detail.data.employee.poolId], ['Device currently held', detail.data.employee.workstationState === 'IN_USE' ? detail.data.employee.currentWorkstationId : null],
             ['Off-days used', `${detail.data.employee.offDaysUsed} / ${detail.data.employee.offDaysAllowance}`], ['Joined', fmtDate(detail.data.employee.joinedAt)],
           ].map(([label, value]) => <div key={label} className="flex justify-between gap-4 border-b border-line pb-3"><dt className="text-ink-muted">{label}</dt><dd className="text-right">{value ?? '—'}</dd></div>)}</dl>
-          <h3 className="mb-3 mt-6 text-sm font-semibold">Contact details</h3><p className="break-all text-sm text-ink-muted">{detail.data.employee.email}</p>
+          <h3 className="mb-3 mt-6 text-sm font-semibold">Contact details</h3><p className="break-all text-sm text-ink-muted">{detail.data.employee.email}</p><p className="mt-1 text-sm text-ink-muted">{detail.data.employee.phone}</p>
           <p className="mt-4 text-xs text-ink-subtle">Open the full record for schedules, off-days, replacements and audit history.</p>
         </>}
       </Dialog>

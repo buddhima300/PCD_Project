@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useLayoutEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { LoadingBlock } from '../ui/States';
@@ -11,9 +11,15 @@ import { supervisorAreaFor } from '../../data/supervisorNavigation';
 export function AppShell() {
   const user = useSessionStore((s) => s.user);
   const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    if (!user) return;
+    document.documentElement.classList.add('elite-theme');
+    return () => document.documentElement.classList.remove('elite-theme');
+  }, [user]);
   if (!user) return <Navigate to="/login" replace />;
   return (
     <div className="app-shell-canvas flex min-h-screen w-full" data-workspace={user.role === 'SUPERVISOR' ? supervisorAreaFor(pathname)?.id ?? 'supervisor' : user.role.toLowerCase()}>
+      <div className="app-atmosphere" aria-hidden="true"><span /><span /><span /></div>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop">
         Skip to content
       </a>

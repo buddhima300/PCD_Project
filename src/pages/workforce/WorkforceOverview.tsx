@@ -19,14 +19,14 @@ export function WorkforceOverview() {
     <div>
       <PageHeader
         title="Workforce overview"
-        description="Permanent employees are assigned to a platform, department and shift. Freelancers belong to one department and cover absences."
+        description="Register employees or freelancers → start training → evaluate → assign a production platform and shift."
         actions={
           <div className="flex gap-2">
             <Link to="/register">
               <Button size="sm">Register staff</Button>
             </Link>
-            <Link to="/placement-queue">
-              <Button size="sm" variant="secondary">Placement Queue</Button>
+            <Link to="/workforce/assignments">
+              <Button size="sm" variant="secondary">Platform vacancies</Button>
             </Link>
           </div>
         }

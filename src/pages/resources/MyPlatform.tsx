@@ -1,7 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MonitorIcon } from 'lucide-react';
-import { PlatformRosterView } from '../../components/roster/PlatformRosterView';
 import { Card } from '../../components/ui/Card';
 import { CapacityMeter } from '../../components/ui/CapacityMeter';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -17,7 +16,7 @@ export function MyPlatform() {
     <QueryView query={q}>
       {(w) => {
         const p = w.platform;
-        if (!p) return <div><PageHeader title="My platform" /><Card><EmptyState icon={MonitorIcon} title="No platform assignment" description="You’ll see your platform here once you are assigned to a replacement." /></Card></div>;
+        if (!p) return <div><PageHeader title="My platform" /><Card><EmptyState icon={MonitorIcon} title="No platform assignment" description="Your platform will appear here after your supervisor assigns training, production work or replacement coverage." /></Card></div>;
         return (
           <div>
             <PageHeader title={`My platform · ${p.code}`} meta={<StatusBadge status={p.opStatus} />} description={`Category ${p.categoryCode} · You work in ${w.person.dept} (${deptNames[w.person.dept]})`} />
@@ -29,7 +28,6 @@ export function MyPlatform() {
                 </Card>
               )}
             </div>
-            <PlatformRosterView code={p.code} date={TODAY} linkPeople={false} />
           </div>);
 
       }}

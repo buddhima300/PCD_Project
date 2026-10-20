@@ -45,8 +45,8 @@ function build(key: ReportKey, f: ReportFilters): {columns: string[];rows: Row[]
       };
     case 'platform-capacity':
       return {
-        columns: ['Platform', 'Department', 'Capacity', 'Occupied now', 'Available', 'Handover pending'],
-        rows: listPlatformSummaries({ category: f.category }).filter((p) => inCat(p.code)).flatMap((p) => p.occupancy.filter((o) => inDept(o.dept)).map((o) => [p.code, o.dept, o.capacity, o.occupiedNow, o.available, o.handoverPending]))
+        columns: ['Platform', 'Department', 'Capacity', 'Occupied now', 'Available'],
+        rows: listPlatformSummaries({ category: f.category }).filter((p) => inCat(p.code)).flatMap((p) => p.occupancy.filter((o) => inDept(o.dept)).map((o) => [p.code, o.dept, o.capacity, o.occupiedNow, o.available]))
       };
     case 'department-workforce':
       return {

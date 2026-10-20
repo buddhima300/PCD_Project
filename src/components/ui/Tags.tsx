@@ -4,10 +4,10 @@ import type { DeptCode, ShiftCode } from '../../types/domain';
 import { cn } from '../../utils/cn';
 import { deptNames } from '../../utils/format';
 
-export function ShiftTag({ shift, className }: {shift: ShiftCode;className?: string;}) {
+export function ShiftTag({ shift, className, filled = false }: {shift: ShiftCode;className?: string;filled?: boolean;}) {
   const m = shift === 'MORNING';
   return (
-    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset', m ? 'bg-warning-50 text-warning-600 ring-warning-100' : 'bg-primary-50 text-primary-700 ring-primary-100', className)}>
+    <span data-shift={shift} data-filled={filled || undefined} className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset', filled ? m ? 'bg-blue-700 text-white ring-blue-700' : 'bg-red-700 text-white ring-red-700' : m ? 'bg-warning-50 text-warning-600 ring-warning-100' : 'bg-primary-50 text-primary-700 ring-primary-100', className)}>
       {m ? <SunIcon className="h-3 w-3" aria-hidden /> : <MoonIcon className="h-3 w-3" aria-hidden />}
       {m ? 'Morning' : 'Night'}
     </span>);

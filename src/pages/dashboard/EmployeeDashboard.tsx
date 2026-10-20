@@ -1,16 +1,16 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftRightIcon, ArrowRightIcon, CalendarOffIcon, GraduationCapIcon, LaptopIcon, MoonIcon, RepeatIcon, SunIcon } from 'lucide-react';
+import { ArrowRightIcon, CalendarOffIcon, GraduationCapIcon, LaptopIcon, MoonIcon, RepeatIcon, SunIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { CapacityMeter } from '../../components/ui/CapacityMeter';
+import { RadialProgress } from '../../components/ui/RadialProgress';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { api } from '../../services/api';
-import { deptNames, fmtDate, fmtShiftWindow, fmtTime, relative } from '../../utils/format';
+import { deptNames, fmtDate, fmtShiftWindow, relative } from '../../utils/format';
 
 export function EmployeeDashboard() {
   const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork() });
@@ -18,8 +18,6 @@ export function EmployeeDashboard() {
   if (q.isPending) return <Skeleton className="h-96" />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
   const w = q.data;
-  const incoming = w.handovers.find((h) => h.direction === 'INCOMING' && h.handover.status !== 'COMPLETED');
-  const nextHo = incoming ?? w.handovers.find((h) => h.handover.status !== 'COMPLETED');
   const occ = w.platform?.occupancy.find((o) => o.dept === w.person.dept);
 
   return (
@@ -27,7 +25,8 @@ export function EmployeeDashboard() {
       <PageHeader title={`Good evening, ${w.person.name.split(' ')[0]}`} description="Your platform, shift and workstation for today." />
 
       {/* On-Platform Training Notice */}
-      <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50/70 p-4">
+      {!w.platform && <Card className="mb-4 p-4"><h2 className="text-sm font-semibold">Awaiting platform assignment</h2><p className="mt-1 text-sm text-ink-muted">Your employee account remains active. A supervisor can assign your next platform from the employee directory.</p></Card>}
+      {w.platform && <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50/70 p-4">
         <div className="flex items-start gap-3">
           <div className="rounded-lg bg-primary p-2 text-white">
             <GraduationCapIcon className="h-5 w-5" />
@@ -37,14 +36,14 @@ export function EmployeeDashboard() {
               Assigned Platform: {w.platform?.code} ({w.person.dept} — {deptNames[w.person.dept]})
             </h3>
             <p className="mt-1 text-xs text-primary-800">
-              Platform Workforce Position: <strong>{w.person.dept}-04</strong> · Direct On-The-Job Placement.
+              Department: <strong>{w.person.dept}</strong> · {w.person.qualifiedForProduction === false ? 'Training before production assignment' : 'Production staff'}
             </p>
             <p className="mt-0.5 text-xs text-emerald-800 font-medium">
-              &ldquo;New workers train on their assigned production platform for 5 working days and remain permanently assigned to that same platform upon passing evaluation.&rdquo;
+              Training qualification and production assignment are separate supervisor decisions.
             </p>
           </div>
         </div>
-      </div>
+      </div>}
       <div className="grid gap-4 xl:grid-cols-12">
         <Card className="xl:col-span-8">
           <div className="p-5">
@@ -55,8 +54,8 @@ export function EmployeeDashboard() {
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
               <div>
                 <dt className="text-xs text-ink-muted">Platform</dt>
-                <dd className="mt-0.5 text-2xl font-semibold tracking-tight">{w.platform?.code}</dd>
-                <dd className="text-xs text-ink-subtle">{w.platform?.categoryCode} category</dd>
+                <dd className="mt-0.5 text-2xl font-semibold tracking-tight">{w.platform?.code || 'Unassigned'}</dd>
+                <dd className="text-xs text-ink-subtle">{w.platform ? `${w.platform.categoryCode} category` : 'No production shift scheduled'}</dd>
               </div>
               <div>
                 <dt className="text-xs text-ink-muted">Department</dt>
@@ -66,12 +65,7 @@ export function EmployeeDashboard() {
               <div>
                 <dt className="text-xs text-ink-muted">Workstation</dt>
                 <dd className="mt-1 font-mono text-sm font-semibold">{w.workstation?.workstationId ?? '—'}</dd>
-                <dd className="text-xs text-ink-subtle">{w.workstation?.assetId ?? 'Not allocated'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-ink-muted">Next handover</dt>
-                <dd className="mt-0.5 text-2xl font-semibold tracking-tight tabular">{nextHo ? fmtTime(nextHo.handover.scheduledAt) : '—'}</dd>
-                <dd className="text-xs text-ink-subtle">{nextHo ? nextHo.direction === 'INCOMING' ? 'You receive' : 'You hand over' : 'None scheduled'}</dd>
+                <dd className="text-xs text-ink-subtle">{w.workstation?.assetId ?? 'Shared platform device'}</dd>
               </div>
             </dl>
             <div className="mt-5 rounded-xl bg-primary-50 p-4">
@@ -81,34 +75,15 @@ export function EmployeeDashboard() {
                 Next shift: {w.nextWindow ? fmtShiftWindow(w.nextWindow.start, w.nextWindow.end) : '—'}
               </p>
             </div>
-            {incoming &&
-            <div className="mt-3 flex flex-col gap-3 rounded-xl border border-warning-100 bg-warning-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <ArrowLeftRightIcon className="mt-0.5 h-5 w-5 text-warning-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-ink">Receive {incoming.handover.workstationId} before {fmtTime(incoming.handover.scheduledAt)}</p>
-                    <p className="text-xs text-ink-muted">
-                      {incoming.handover.outgoingName} ({incoming.handover.outgoingId}) · <StatusBadge status={incoming.handover.status} size="xs" />
-                    </p>
-                  </div>
-                </div>
-                <Link to="/handover">
-                  <Button size="sm">Open handover</Button>
-                </Link>
-              </div>
-            }
           </div>
         </Card>
 
         <Card className="xl:col-span-4">
           <CardHeader title="Off-days this month" description="4 per month · max 2 per platform department per day" icon={<CalendarOffIcon className="mt-0.5 h-4 w-4 text-violet" />} />
           <div className="p-5 pt-3">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tabular">{w.offDaysRemaining}</span>
-              <span className="text-sm text-ink-muted">remaining · {w.offDaysUsed} used</span>
-            </div>
-            <div className="mt-2">
-              <CapacityMeter used={w.offDaysUsed} capacity={4} showText={false} label={undefined} />
+            <div className="flex items-center gap-4">
+              <RadialProgress value={w.offDaysRemaining} max={4} label="Off-days remaining this month" display={String(w.offDaysRemaining)} caption="remaining"/>
+              <div><p className="text-sm font-semibold">Monthly balance</p><p className="mt-1 text-xs text-ink-muted">{w.offDaysUsed} of 4 off-days used</p></div>
             </div>
             <p className="mt-4 text-xs font-semibold text-ink">Upcoming off-days</p>
             {w.upcomingOffDays.length === 0 ?
@@ -135,7 +110,7 @@ export function EmployeeDashboard() {
           <CardHeader title="My department on the platform" description={`${w.platform?.code} / ${w.person.dept} workstation pool`} icon={<LaptopIcon className="mt-0.5 h-4 w-4 text-primary" />} />
           {occ ?
           <div className="space-y-3 p-5 pt-4">
-              <CapacityMeter label="Seats in use now" used={occ.occupiedNow} capacity={occ.capacity} size="md" pending={occ.handoverPending} />
+              <CapacityMeter label="Seats in use now" used={occ.occupiedNow} capacity={occ.capacity} size="md" />
               <div className="grid grid-cols-2 gap-2 text-center">
                 <div className="rounded-lg bg-canvas p-2">
                   <p className="flex items-center justify-center gap-1 text-[11px] text-ink-muted"><SunIcon className="h-3 w-3" /> Morning</p>

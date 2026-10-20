@@ -34,6 +34,7 @@ export interface FreelancerQuery {
 const nowIso = () => format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss");
 
 export interface EmployeeDetail {
+  offDayBalance?: {month:string;allowance:number;used:number;remaining:number};
   employee: Employee;
   offDays: OffDayRequest[];
   replacements: Replacement[];
@@ -55,6 +56,7 @@ export const workforceApi = {
   respond(() => {
     requireRole('SUPERVISOR');
     const list = db.employees.
+    filter((e) => e.qualifiedForProduction !== false).
     filter((e) => !q.category || e.categoryCode === q.category).
     filter((e) => !q.platform || e.platformCode === q.platform).
     filter((e) => !q.dept || e.dept === q.dept).
@@ -103,6 +105,7 @@ export const workforceApi = {
   respond(() => {
     requireRole('SUPERVISOR');
     const list = db.freelancers.
+    filter((f) => f.qualifiedForProduction !== false).
     filter((f) => !q.dept || f.dept === q.dept).
     filter((f) => !q.status || f.status === q.status).
     filter((f) => textMatch(q.search, f.id, f.name, f.email)).
@@ -238,26 +241,28 @@ export const workforceApi = {
   getWorkforceOverview: () =>
   respond(() => {
     requireRole('SUPERVISOR');
+    const employees=db.employees.filter(e=>e.qualifiedForProduction!==false);
+    const freelancers=db.freelancers.filter(f=>f.qualifiedForProduction!==false);
     const byCategory = db.categories.map((c) => ({
       code: c.code,
-      employees: db.employees.filter((e) => e.categoryCode === c.code).length,
-      morning: db.employees.filter((e) => e.categoryCode === c.code && e.shift === 'MORNING').length,
-      night: db.employees.filter((e) => e.categoryCode === c.code && e.shift === 'NIGHT').length,
+      employees: employees.filter((e) => e.categoryCode === c.code).length,
+      morning: employees.filter((e) => e.categoryCode === c.code && e.shift === 'MORNING').length,
+      night: employees.filter((e) => e.categoryCode === c.code && e.shift === 'NIGHT').length,
       required: db.platforms.filter((p) => p.categoryCode === c.code && p.status === 'ACTIVE').reduce((s, p) => s + Object.values(p.departments).reduce((a, b) => a + (b ?? 0), 0) * 2, 0)
     }));
     const byDept = DEPT_ORDER.map((d) => ({
       dept: d,
-      employees: db.employees.filter((e) => e.dept === d).length,
-      freelancers: db.freelancers.filter((f) => f.dept === d && f.status === 'ACTIVE').length,
-      availableTonight: db.freelancers.filter((f) => f.dept === d && f.status === 'ACTIVE' && db.availability[f.id]?.[TODAY]?.NIGHT === 'AVAILABLE').length
+      employees: employees.filter((e) => e.dept === d).length,
+      freelancers: freelancers.filter((f) => f.dept === d && f.status === 'ACTIVE').length,
+      availableTonight: freelancers.filter((f) => f.dept === d && f.status === 'ACTIVE' && db.availability[f.id]?.[TODAY]?.NIGHT === 'AVAILABLE').length
     }));
     return {
       totals: {
-        permanent: db.employees.length,
-        freelancers: db.freelancers.length,
-        activeFreelancers: db.freelancers.filter((f) => f.status === 'ACTIVE').length,
-        onLeave: db.employees.filter((e) => e.status === 'ON_LEAVE').length,
-        locked: db.employees.filter((e) => e.accountStatus !== 'ACTIVE').length,
+        permanent: employees.length,
+        freelancers: freelancers.length,
+        activeFreelancers: freelancers.filter((f) => f.status === 'ACTIVE').length,
+        onLeave: employees.filter((e) => e.status === 'ON_LEAVE').length,
+        locked: employees.filter((e) => e.accountStatus !== 'ACTIVE').length,
         required: byCategory.reduce((s, c) => s + c.required, 0)
       },
       byCategory,

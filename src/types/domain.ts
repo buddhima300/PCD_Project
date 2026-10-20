@@ -62,6 +62,7 @@ export interface CategorySummary extends PlatformCategory {
 export type DeptCapacity = Partial<Record<DeptCode, number>>;
 
 export interface Platform {
+  revision?: number;
   id: string;
   code: string;
   categoryCode: string;
@@ -75,6 +76,7 @@ export interface Platform {
 }
 
 export interface DeptOccupancy {
+  coverage?: Record<ShiftCode, import('./equipment').ShiftCoverage>;
   dept: DeptCode;
   poolId: string;
   capacity: number;
@@ -85,9 +87,12 @@ export interface DeptOccupancy {
   handoverPending: number;
 }
 
-export type PlatformOpStatus = 'SETUP' | 'OPERATIONAL' | 'FULL' | 'WARNING' | 'INCIDENT' | 'INACTIVE';
+export type PlatformOpStatus = 'SETUP' | 'OPERATIONAL' | 'FULL' | 'WARNING' | 'INCIDENT' | 'INACTIVE' | 'CONFLICT' | 'EQUIPMENT_SHORTAGE' | 'NEEDS_ALLOCATION' | 'STAFFING_GAP' | 'HANDOVER_PENDING' | 'READY' | 'OPERATING';
 
 export interface PlatformSummary extends Platform {
+  equipmentDate?:string;
+  equipmentShift?:ShiftCode;
+  shiftStatuses?:Record<ShiftCode,PlatformOpStatus>;
   totalWorkstations: number;
   requiredWorkforce: number;
   morningWorkforce: number;
@@ -106,6 +111,13 @@ export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED';
 export type AccountStatus = 'ACTIVE' | 'LOCKED' | 'INVITED';
 
 export interface Employee {
+  staffNumber?: string;
+  candidateReference?: string;
+  loginAccess?: {hasAccount:boolean;revision:number;canManage:boolean;disabledReason:string|null;changedAt:string|null};
+  careerLevel?: import('./career').CareerLevel;
+  careerRevision?: number;
+  careerHistory?: import('./career').CareerEvent[];
+  platformHistory?: {platformCode:string;from:string;to:string|null;reason:string}[];
   uuid: string;
   id: string;
   name: string;
@@ -140,6 +152,8 @@ export interface AvailabilityDay {
 }
 
 export interface Freelancer {
+  staffNumber?: string;
+  candidateReference?: string;
   uuid: string;
   id: string;
   employmentType: EmploymentType;
@@ -335,6 +349,7 @@ export interface ChecklistResult {
 }
 
 export interface Handover {
+  equipmentOnly?: boolean;
   attendanceTracked?: boolean;
   plannedAssetId?: string;
   incomingNotes?: string;
@@ -388,6 +403,7 @@ export interface Incident {
 }
 
 export type NotificationType =
+'CAREER_PROMOTION' |
 'OFFDAY_APPROVED' |
 'OFFDAY_REJECTED' |
 'OFFDAY_OVERRIDE' |
@@ -565,6 +581,7 @@ export type CandidateStatus =
 export type InterviewResult = 'SELECTED' | 'RECOMMENDED' | 'REJECTED' | 'PENDING';
 
 export interface RecruitCandidate {
+  candidateReference?: string;
   registeredWorkerId?: string;
   id: string;
   name: string;
@@ -653,7 +670,12 @@ export interface TrainingEvaluation {
 }
 
 export interface PlatformTrainingAssignment {
+  staffNumber?: string;
+  candidateReference?: string;
+  trainingNotes?: string;
   trainingOnly?: boolean;
+  productionPlatformCode?: string;
+  productionShift?: ShiftCode;
   promotedAt?: string;
   id: string;
   workerId: string;

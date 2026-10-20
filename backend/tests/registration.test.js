@@ -15,7 +15,7 @@ for (const staffType of ['PERMANENT','FREELANCER']) test(`${staffType} intake cr
   const initialPassword = 'Initial-staff-password-42'; const newPassword = 'Changed-staff-password-42';
   const origin = 'http://localhost:5173';
   try {
-    for (const file of ['001_foundation.sql','002_operations.sql','003_workflow_records.sql']) await engine.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
+    for (const file of ['001_foundation.sql','002_operations.sql','003_workflow_records.sql','004_equipment_allocations.sql','005_login_access_controls.sql','007_staff_number_counters.sql']) await engine.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
     const id = randomUUID();
     await db.query("INSERT INTO users(id,email,name,role,password_hash) VALUES($1,'register-admin@example.test','Registration Supervisor','SUPERVISOR',$2)", [id, await hashPassword(initialPassword)]);
     await db.query("INSERT INTO user_permissions(user_id,permission) VALUES($1,'accounts.manage')", [id]);
@@ -69,10 +69,16 @@ for (const staffType of ['PERMANENT','FREELANCER']) test(`${staffType} intake cr
       assert.equal((await db.query('SELECT count(*)::int AS n FROM ops_candidates')).rows[0].n,candidatesBefore);
       assert.equal((await db.query('SELECT count(*)::int AS n FROM workers WHERE email=$1',[collision.email])).rows[0].n,0);
       const state = await loadState(db);
-      const position = state.platformPositions.find(position => position.dept === 'DP' && position.status === 'VACANT' && state.laptops.some(laptop => laptop.poolId === `POOL-${position.platformCode.replace('-','')}-DP` && laptop.status === 'AVAILABLE'));
-      assert.ok(position,'The original vacancy dataset must support placement');
-      const placed = await request('/operations/workflows/placeWorker',{args:[{workerId:candidate.id,workerName:input.name,workerType:type,dept:'DP',platformCode:position.platformCode,positionCode:position.positionCode,shift:position.shift,workstationId:position.workstationId ?? '',laptopAssetId:'',trainingDurationDays:5}]},supervisor);
-      assert.equal(placed.status,200,JSON.stringify(placed.data)); assert.equal(placed.data.workerId,user.id);
+      const code=state.categories[0].code+'-9999';
+      for(const [method,args] of [['createPlatform',[{categoryCode:state.categories[0].code,code,name:'Intake training',description:''}]],['configurePlatformCapacity',[code,{departments:{DP:1},staffingTargets:{DP:{MORNING:1,NIGHT:1}},expectedRevision:1}]],['activatePlatform',[code]]]) {
+        const response=await request('/operations/workflows/'+method,{args},supervisor);
+        assert.equal(response.status,200,JSON.stringify(response.data));
+      }
+      const placed=await request('/operations/workflows/assignPlatformWorker',{args:[code,{workerId:user.id,kind:'TRAINING',dept:'DP',shift:'MORNING',trainingDays:5}]},supervisor);
+      assert.equal(placed.status,200,JSON.stringify(placed.data));
+      const trainings=await request('/operations/workflows/listTrainings',{args:[{platform:code}]},supervisor);
+      assert.equal(trainings.data[0].workerId,user.id);
+      assert.equal((await request('/operations/workflows/placeWorker',{args:[{}]},supervisor)).status,410);
       assert.equal((await db.query(`SELECT count(*)::int AS n FROM ${table} WHERE data->>'email'=$1`,[input.email])).rows[0].n,1);
       assert.equal((await db.query('SELECT worker_id FROM operational_accounts WHERE user_id=$1',[user.id])).rows[0].worker_id,workerId);
       assert.equal((await request('/auth/change-password',{currentPassword:'Wrong-password-42',newPassword},worker)).status,401);

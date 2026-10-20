@@ -247,3 +247,10 @@ html.agency-theme body { background: #0b0b0c; color: rgb(var(--ink)); font-famil
   .agency-theme button.app-primary-action,
   .agency-theme button.app-raised-control { min-height: 44px; }
 }
+
+/* Filled workforce status chips use the shared semantic palette. */
+.agency-theme [data-status-tone="success"] { background: #285c3a; color: #d6ffe2; --tw-ring-color: #43845a; }
+.agency-theme [data-status-tone="warning"] { background: #654619; color: #ffebbc; --tw-ring-color: #9a6c2c; }
+.agency-theme [data-status-tone="danger"] { background: #6b2e32; color: #ffe0df; --tw-ring-color: #a75458; }
+.agency-theme [data-status-tone="info"] { background: #334f79; color: #e2edff; --tw-ring-color: #587bac; }
+.agency-theme [data-status-tone="neutral"] { background: #383633; color: #ede7e0; }

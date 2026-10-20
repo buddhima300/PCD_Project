@@ -42,7 +42,7 @@ export function PlatformConfig() {
   }, [detail.data]);
 
   const save = useMutation({
-    mutationFn: () => api.updatePlatformConfig(selected!, { departments: draft, status, reason }),
+    mutationFn: () => api.updatePlatformConfig(selected!, { departments: draft, status, reason, expectedRevision:detail.data?.platform.revision ?? 1 }),
     onSuccess: (p) => {
       toast.success(`${p.code} configuration saved`, { description: 'Change recorded in the audit log and managers notified.' });
       qc.invalidateQueries();

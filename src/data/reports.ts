@@ -42,7 +42,6 @@ export const reportDefinitions: ReportDefinition[] = [
 { key: 'pool-utilization', title: 'Workstation pool utilisation', group: 'Workstations', description: 'Occupied, available and blocked workstations per pool.' },
 { key: 'laptop-inventory', title: 'Laptop inventory', group: 'Workstations', description: 'Every laptop with pool, status and condition.' },
 { key: 'laptop-assignment-history', title: 'Laptop assignment history', group: 'Workstations', description: 'Completed laptop receipts by employee and shift.' },
-{ key: 'handover-history', title: 'Laptop handover history', group: 'Workstations', description: 'All handovers with outgoing and incoming employees.' },
 { key: 'laptop-incidents', title: 'Laptop incidents', group: 'Workstations', description: 'Incident log by severity, category and status.' },
 { key: 'platform-incidents', title: 'Platform incidents', group: 'Governance', description: 'Open and resolved incidents per platform.' },
 { key: 'audit-activity', title: 'Audit activity', group: 'Governance', description: 'Audit events by action type, including overrides.' }];

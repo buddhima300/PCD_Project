@@ -15,7 +15,7 @@ test('original dataset imports atomically, preserves auth, and shared workflows 
   let server;
   const db = { query: (sql, params) => engine.query(sql, params), connect: async () => ({ query: (sql, params) => engine.query(sql, params), release() {} }) };
   try {
-    for (const file of ['001_foundation.sql', '002_operations.sql', '003_workflow_records.sql']) await engine.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
+    for (const file of ['001_foundation.sql', '002_operations.sql', '003_workflow_records.sql','004_equipment_allocations.sql','005_login_access_controls.sql','007_staff_number_counters.sql']) await engine.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
     const supervisor = { id: randomUUID(), email: 'supervisor@example.test', name: 'Nimal Perera', role: 'SUPERVISOR', title: 'Supervisor' };
     const employee = { id: randomUUID(), email: 'employee@example.test', name: 'Kasun Silva', role: 'EMPLOYEE', title: 'Employee' };
     const other = { ...employee, id: randomUUID(), email: 'other@example.test' };

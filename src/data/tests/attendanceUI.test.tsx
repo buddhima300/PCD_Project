@@ -32,21 +32,12 @@ it('switches workers by removing the session, remembered identity and query data
   await screen.findByText('Next worker sign-in'); expect(useSessionStore.getState().user).toBeNull(); expect(qc.getQueryCache().getAll()).toHaveLength(0); expect(localStorage.getItem('portcity-login-email')).toBeNull();
 });
 
-it('lets the incoming worker confirm first and captures the device timestamp without an editable time field', async () => {
-  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-13T19:30:00+05:30'));
-  const h = transfer();
-  vi.spyOn(api, 'getMyWorkstationHandovers').mockImplementation(async () => ({ tasks: [structuredClone(h)], workstation: null, history: h.receivedAt ? [structuredClone(h)] : [], totalHistory: h.receivedAt ? 1 : 0 }));
-  const submit = vi.spyOn(api, 'submitHandoverConfirmation').mockImplementation(async (_id, input) => { h.receivedAt = input.deviceTimestamp; h.status = 'RECEIVED'; h.incomingNotes = input.notes; return structuredClone(h); });
-  renderWorker(<MyWorkstation />); await screen.findByRole('button', { name: 'Confirm receipt' });
-  expect(screen.queryByLabelText(/receipt time/i)).not.toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Receipt notes (optional)'), { target: { value: 'Laptop received' } }); fireEvent.click(screen.getByRole('button', { name: 'Confirm receipt' }));
-  await waitFor(() => expect(submit).toHaveBeenCalledWith('HO-UI', expect.objectContaining({ direction: 'INCOMING', deviceTimestamp: '2026-10-13T14:00:00.000Z', notes: 'Laptop received' })));
-  await screen.findByText(/Your confirmation is saved/); expect(screen.getByText('Pending counterpart')).toBeInTheDocument();
-});
-
-it('disables early receipt and requires a reason for the unavailable-worker exception', async () => {
-  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-13T19:14:00+05:30'));
-  vi.spyOn(api, 'getMyWorkstationHandovers').mockResolvedValue({ tasks: [transfer()], workstation: null, history: [], totalHistory: 0 });
-  renderWorker(<MyWorkstation />); expect(await screen.findByRole('button', { name: 'Confirm receipt' })).toBeDisabled();
-  fireEvent.click(screen.getByLabelText('Outgoing worker unavailable · self-confirm attendance')); expect(screen.getByLabelText('Required reason for self-confirmation')).toBeRequired(); expect(screen.getByRole('button', { name: 'Self-confirm attendance' })).toBeDisabled();
+it('shows shared devices without pending receipt or handover actions', async () => {
+  vi.spyOn(api,'getMyWork').mockResolvedValue({person:{id:'EMP-IN',dept:'DP'},platform:{code:'JAX-15'}} as any);
+  const retired=vi.spyOn(api,'getMyWorkstationHandovers');
+  renderWorker(<MyWorkstation />);
+  await screen.findByText('JAX-15 · DP');
+  expect(screen.queryByRole('button',{name:'Confirm receipt'})).not.toBeInTheDocument();
+  expect(screen.getByRole('link',{name:'Report an equipment issue'})).toHaveAttribute('href','/report-issue');
+  expect(retired).not.toHaveBeenCalled();
 });
