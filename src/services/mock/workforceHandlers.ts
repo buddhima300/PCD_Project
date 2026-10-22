@@ -10,6 +10,7 @@ import { DEPT_ORDER, db, plusDays, pushAudit } from './db';
 import { paginate, textMatch, toEmployee, toFreelancer } from './selectors';
 
 export interface EmployeeQuery {
+  attendance?: {date:string;shift:string;status:string};
   page?: number;
   pageSize?: number;
   search?: string;
@@ -23,6 +24,7 @@ export interface EmployeeQuery {
 }
 
 export interface FreelancerQuery {
+  attendance?: {date:string;shift:string;status:string};
   page?: number;
   pageSize?: number;
   search?: string;

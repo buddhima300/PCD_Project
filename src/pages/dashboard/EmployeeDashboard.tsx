@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AttendanceDashboardCard } from '../../components/attendance/AttendanceDashboardCard';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightIcon, CalendarOffIcon, GraduationCapIcon, LaptopIcon, MoonIcon, RepeatIcon, SunIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -13,7 +14,7 @@ import { api } from '../../services/api';
 import { deptNames, fmtDate, fmtShiftWindow, relative } from '../../utils/format';
 
 export function EmployeeDashboard() {
-  const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork() });
+  const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork(), refetchInterval:15000 });
   const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}) });
   if (q.isPending) return <Skeleton className="h-96" />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
@@ -25,6 +26,7 @@ export function EmployeeDashboard() {
       <PageHeader title={`Good evening, ${w.person.name.split(' ')[0]}`} description="Your platform, shift and workstation for today." />
 
       {/* On-Platform Training Notice */}
+      <AttendanceDashboardCard />
       {!w.platform && <Card className="mb-4 p-4"><h2 className="text-sm font-semibold">Awaiting platform assignment</h2><p className="mt-1 text-sm text-ink-muted">Your employee account remains active. A supervisor can assign your next platform from the employee directory.</p></Card>}
       {w.platform && <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50/70 p-4">
         <div className="flex items-start gap-3">

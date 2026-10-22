@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AttendanceDashboardCard } from '../../components/attendance/AttendanceDashboardCard';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarCheckIcon, ClipboardListIcon, MoonIcon, SunIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -12,7 +13,7 @@ import { api } from '../../services/api';
 import { deptNames, fmtDate, fmtShiftWindow, relative } from '../../utils/format';
 
 export function FreelancerDashboard() {
-  const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork() });
+  const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork(), refetchInterval:15000 });
   const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}) });
   if (q.isPending) return <Skeleton className="h-96" />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
@@ -27,6 +28,7 @@ export function FreelancerDashboard() {
         description={`${w.person.id} · ${deptNames[w.person.dept]} freelancer · Priority ${w.person.priority} in ${w.person.dept}`} />
 
       {/* Platform Compatibility Banner */}
+      <AttendanceDashboardCard />
       <div className="mb-4 rounded-xl border border-line bg-surface p-3.5 flex flex-wrap gap-3 items-center justify-between text-xs">
         <div>
           <span className="font-semibold text-ink">Verified Platform Compatibility:</span>{' '}

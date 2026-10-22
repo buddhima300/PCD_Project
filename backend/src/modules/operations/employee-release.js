@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError } from '../../shared/errors.js';
 import { audit } from '../audit/audit.model.js';
+import { recordCustodyReturn } from './attendance-store.js';
 
 export const employeeReleaseMethods=new Set(['getEmployeeReleaseInfo','verifyEmployeeDeviceReturn']);
 export async function employeeReleaseOperation(client,auth,state,method,args) {
@@ -22,6 +23,11 @@ export async function employeeReleaseOperation(client,auth,state,method,args) {
   const laptop=state.laptops.find(l => l.assetId === input.assetId && l.currentUserId === id);
   if (!laptop) throw new ApiError(409,'CUSTODY_CHANGED','Device custody changed. Refresh before recording a return.');
   const previous={holder:laptop.currentUserId,workstationId:laptop.workstationId,status:laptop.status};
+  if((await client.query("SELECT to_regclass('equipment_custody_sessions') AS name")).rows[0].name){
+    const custody=(await client.query(`SELECT s.id,s.revision FROM equipment_custody_sessions s JOIN workers w ON w.id=s.worker_id
+      WHERE s.asset_id=$1 AND w.worker_number=$2 AND s.released_at IS NULL`,[laptop.assetId,id])).rows[0];
+    if(custody)await recordCustodyReturn(client,{custodyId:custody.id,expectedRevision:custody.revision,actorId:auth.user.id,at:new Date().toISOString(),notes:input.reason});
+  }
   Object.assign(laptop,{currentUserId:null,currentUserName:null,currentShift:null});
   if (laptop.nextUserId === id) Object.assign(laptop,{nextUserId:null,nextUserName:null});
   if (!['MAINTENANCE','RETIRED'].includes(laptop.status)) laptop.status=laptop.condition === 'DAMAGED' || state.incidents.some(i => i.assetId === laptop.assetId && i.status !== 'RESOLVED') ? 'INCIDENT' : 'AVAILABLE';

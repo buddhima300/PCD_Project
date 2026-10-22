@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { AttendanceBadge, DirectoryAttendanceFilters } from '../../components/attendance/AttendanceRegister';
+import { initialAttendanceScope } from '../../components/attendance/attendance-utils';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -24,7 +26,7 @@ import { EmployeeLoginToggle } from '../../components/placement/EmployeeLoginTog
 import { fmtDate } from '../../utils/format';
 
 const PAGE_SIZE = 100;
-const COLS = 'grid-cols-[110px_minmax(160px,1.4fr)_90px_60px_minmax(150px,1.2fr)_96px_90px_210px_90px]';
+const COLS = 'grid-cols-[110px_minmax(160px,1.4fr)_90px_60px_minmax(150px,1.2fr)_96px_90px_210px_90px_190px]';
 
 const headers: {key: keyof Employee;label: string;}[] = [
 { key: 'id', label: 'Employee ID' },
@@ -39,6 +41,7 @@ const headers: {key: keyof Employee;label: string;}[] = [
 
 
 export function Employees({ embedded = false }: { embedded?: boolean }) {
+  const [attendance,setAttendance]=useState(initialAttendanceScope);
   const [scope, setScope] = useState<Scope>({ category: '', platform: '', dept: '', shift: '' });
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -47,11 +50,11 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
   const [compact, setCompact] = useState(false);
   const detail = useQuery({ queryKey: ['employee', selectedId], queryFn: () => api.getEmployee(selectedId ?? ''), enabled: !!selectedId });
   const [sort, setSort] = useState<{key: keyof Employee;dir: 'asc' | 'desc';}>({ key: 'id', dir: 'asc' });
-  const query: EmployeeQuery = { ...scope, search, status, page, pageSize: PAGE_SIZE, sort: sort.key, dir: sort.dir };
-  const q = useQuery({ queryKey: ['employees', query], queryFn: () => api.listEmployees(query), placeholderData: keepPreviousData });
+  const query: EmployeeQuery = { ...scope, search, status, page, pageSize: PAGE_SIZE, sort: sort.key, dir: sort.dir, attendance };
+  const q = useQuery({ queryKey: ['employees', query], queryFn: () => api.listEmployees(query), placeholderData: keepPreviousData, refetchInterval:15000 });
   const parentRef = useRef<HTMLDivElement>(null);
   const items = q.data?.items ?? [];
-  const rowHeight = compact ? 36 : 44;
+  const rowHeight = compact ? 72 : 88;
   const virtualizer = useVirtualizer({ count: items.length, getScrollElement: () => parentRef.current, estimateSize: () => rowHeight, overscan: 10 });
   useEffect(() => { virtualizer.measure(); }, [rowHeight, virtualizer]);
 
@@ -64,6 +67,7 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
     <div className={embedded ? 'mt-5' : undefined}>
       {embedded ? <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-base font-semibold">Employee directory</h2><p className="mt-1 text-xs text-ink-muted">Search staff and inspect assignments without leaving the directory.</p></div><span className="text-xs text-ink-muted">{q.data ? `${q.data.total} matching employees` : 'Loading staff…'}</span></div> : <PageHeader title="Employee directory" description="Search, filter and inspect workforce records. Rows are virtualised for large result sets." actions={<Link to="/register"><Button icon={<UserPlusIcon className="h-4 w-4" />}>Register staff</Button></Link>} />}
       <Card>
+        <DirectoryAttendanceFilters value={attendance} onChange={v=>{setAttendance(v);setPage(1);}}/>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={update(setSearch)} placeholder="Search ID, name, email" className="w-64" />
           <ScopeFilters value={scope} onChange={update(setScope)} />
@@ -71,15 +75,16 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
           <button aria-pressed={compact} onClick={() => setCompact(!compact)} className="rounded-lg border border-line px-3 py-2 text-xs text-ink-muted">{compact ? 'Comfortable rows' : 'Compact rows'}</button>
           {(search || status || Object.values(scope).some(Boolean)) && <button onClick={() => {setSearch('');setStatus('');setScope({ category: '', platform: '', dept: '', shift: '' });setPage(1);}} className="px-3 py-2 text-xs text-primary">Clear filters</button>}
         </div>
+        {q.isError&&q.data&&<p role="alert" className="p-3 text-sm text-danger-600">Showing the last successful attendance update. Refresh failed. <button className="underline" onClick={()=>q.refetch()}>Retry</button></p>}
         {q.isPending ?
         <LoadingBlock rows={10} /> :
-        q.isError ?
+        q.isError&&!q.data ?
         <ErrorState error={q.error} onRetry={() => q.refetch()} /> :
         items.length === 0 ?
         <EmptyState title="No employees match these filters" description="Try another platform, department or search term." /> :
 
         <div className="scroll-thin overflow-x-auto">
-            <div role="table" aria-label="Employees" aria-rowcount={q.data.total} className="min-w-[1170px]">
+            <div role="table" aria-label="Employees" aria-rowcount={q.data?.total} className="min-w-[1400px]">
               <div role="rowgroup">
                 <div role="row" className={cn('grid border-b border-line bg-mist/70', COLS)}>
                   {headers.map((h) =>
@@ -92,7 +97,7 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
                         {sort.key === h.key && (sort.dir === 'asc' ? <ArrowUpIcon className="h-3 w-3" /> : <ArrowDownIcon className="h-3 w-3" />)}
                       </button>
                     </div>
-                )}
+                )}<div role="columnheader" className="px-3 py-2.5 text-xs font-semibold text-ink-subtle">Attendance</div>
                 </div>
               </div>
               <div ref={parentRef} role="rowgroup" className={cn('scroll-thin relative h-[600px] overflow-y-auto', q.isFetching && 'opacity-60')}>
@@ -118,6 +123,7 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
                         <div role="cell" className="px-3 tabular">{e.offDaysUsed} / {e.offDaysAllowance}</div>
                         <div role="cell" className="flex items-center gap-2 px-3"><StatusBadge status={e.status} filled size="xs" /><EmployeeLoginToggle employee={e} /></div>
                         <div role="cell" className="px-3">{e.loginAccess?.hasAccount === false ? <span className="text-xs text-ink-subtle">No login</span> : <StatusBadge status={e.accountStatus} filled size="xs" />}</div>
+                        <div role="cell" className="px-3"><AttendanceBadge summary={e.attendance}/></div>
                       </div>);
 
                 })}

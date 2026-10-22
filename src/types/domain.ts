@@ -111,6 +111,7 @@ export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED';
 export type AccountStatus = 'ACTIVE' | 'LOCKED' | 'INVITED';
 
 export interface Employee {
+  attendance?: import('./shiftAttendance').AttendanceSummary;
   staffNumber?: string;
   candidateReference?: string;
   loginAccess?: {hasAccount:boolean;revision:number;canManage:boolean;disabledReason:string|null;changedAt:string|null};
@@ -152,6 +153,7 @@ export interface AvailabilityDay {
 }
 
 export interface Freelancer {
+  attendance?: import('./shiftAttendance').AttendanceSummary;
   staffNumber?: string;
   candidateReference?: string;
   uuid: string;

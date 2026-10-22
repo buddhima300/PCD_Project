@@ -1,0 +1,57 @@
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, errorMessage } from '../../services/api';
+import { useSessionStore } from '../../hooks/useSessionStore';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { Dialog } from '../ui/Dialog';
+import { Input, Select, Field, Textarea } from '../ui/Field';
+import { Pagination } from '../ui/Pagination';
+import { businessDate, businessDateTime, addCalendarDays } from '../../utils/shiftTime';
+import type { AttendanceFilters, AttendanceSummary } from '../../types/shiftAttendance';
+
+const attendanceLabel=(value:string)=>({CONFIRMED:'Confirmed',NEEDS_REVIEW:'Needs review',VOIDED:'Voided',NOT_SUBMITTED:'Not submitted',NOT_SCHEDULED:'Not scheduled'}[value]??value);
+export function AttendanceBadge({summary}:{summary?:AttendanceSummary}) {
+  if(!summary)return <span className="text-xs text-ink-muted">—</span>;
+  const record=summary.confirmations.find(r=>r.status===summary.status)??summary.confirmations[0];
+  return <div className="text-xs leading-5"><span className={`inline-block rounded-full px-2 py-0.5 font-medium ${summary.status==='CONFIRMED'?'bg-emerald-50 text-emerald-800':summary.status==='NEEDS_REVIEW'?'bg-amber-50 text-amber-800':'bg-mist text-ink-muted'}`}>{attendanceLabel(summary.status)}</span>{record&&<Link onClick={e=>e.stopPropagation()} className="block text-primary underline" to={`/shifts?attendanceId=${record.id}&date=${record.rosterDate}`}>{record.shift.toLowerCase()} · {record.assetId??'No laptop'}<span className="block">Device {businessDateTime(record.deviceTimestamp)}</span></Link>}</div>;
+}
+export interface DirectoryAttendanceScope {date:string;shift:string;status:string}
+export function DirectoryAttendanceFilters({value,onChange}:{value:DirectoryAttendanceScope;onChange:(v:DirectoryAttendanceScope)=>void}) {
+  return <div className="flex flex-wrap items-center gap-2 border-b border-line p-3"><span className="text-xs text-ink-muted">Attendance · roster start date</span><Input aria-label="Attendance roster date" type="date" className="w-40" value={value.date} onChange={e=>onChange({...value,date:e.target.value})}/><Select aria-label="Attendance shift" value={value.shift} placeholder="Both shifts" className="w-36" onChange={e=>onChange({...value,shift:e.target.value})} options={[{value:'MORNING',label:'Morning'},{value:'NIGHT',label:'Night'}]}/><Select aria-label="Attendance filter" value={value.status} placeholder="All staff" className="w-44" onChange={e=>onChange({...value,status:e.target.value})} options={[{value:'CONFIRMED',label:'Confirmed only'},{value:'NOT_SUBMITTED',label:'Not submitted'},{value:'NEEDS_REVIEW',label:'Needs review'}]}/></div>;
+}
+export function AttendanceRegister({workerId}:{workerId?:string}) {
+  const [params]=useSearchParams();
+  const date=params.get('date')??businessDate();
+  const [scope,setScope]=useState<AttendanceFilters>({from:workerId?addCalendarDays(date,-30):date,to:date,workerId,page:1,pageSize:25});
+  const [detail,setDetail]=useState<string|null>(workerId?null:params.get('attendanceId'));
+  const q=useQuery({queryKey:['attendance','register',scope],queryFn:()=>api.listShiftAttendance(scope),placeholderData:keepPreviousData,refetchInterval:15000});
+  function change(key:keyof AttendanceFilters,value:string){setScope(s=>({...s,[key]:value,page:1}));}
+  return <Card className="mt-5 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-5"><div><h2 className="font-semibold">{workerId?'Attendance history':'Confirmed attendance & handovers'}</h2><p className="mt-1 text-xs text-ink-muted">Roster dates refer to the start of the shift · Asia/Colombo · updates every 15 seconds</p></div><Button variant="secondary" size="sm" onClick={()=>q.refetch()}>Refresh attendance</Button></div>
+    <div className="grid gap-3 border-b border-line p-4 sm:grid-cols-2 lg:grid-cols-4"><Field label="Roster dates from" htmlFor={`attendance-from-${workerId??'all'}`}><Input id={`attendance-from-${workerId??'all'}`} type="date" value={scope.from} onChange={e=>change('from',e.target.value)}/></Field><Field label="Through" htmlFor={`attendance-to-${workerId??'all'}`}><Input id={`attendance-to-${workerId??'all'}`} type="date" value={scope.to} onChange={e=>change('to',e.target.value)}/></Field><Field label="Shift"><Select aria-label="Register shift" value={scope.shift??''} placeholder="Both shifts" onChange={e=>change('shift',e.target.value)} options={[{value:'MORNING',label:'Morning'},{value:'NIGHT',label:'Night'}]}/></Field><Field label="Status"><Select aria-label="Register status" value={scope.status??''} placeholder="All submissions" onChange={e=>change('status',e.target.value)} options={['CONFIRMED','NEEDS_REVIEW','VOIDED'].map(value=>({value,label:attendanceLabel(value)}))}/></Field>
+      {!workerId&&<><Field label="Platform"><Input aria-label="Register platform" value={scope.platform??''} placeholder="Platform code" onChange={e=>change('platform',e.target.value)}/></Field><Field label="Department"><Select aria-label="Register department" value={scope.department??''} placeholder="All departments" onChange={e=>change('department',e.target.value)} options={['GS','DP','WD','SAFETY'].map(value=>({value,label:value}))}/></Field><Field label="Worker type"><Select aria-label="Register worker type" value={scope.workerType??''} placeholder="All workers" onChange={e=>change('workerType',e.target.value)} options={[{value:'EMPLOYEE',label:'Employees'},{value:'FREELANCER',label:'Freelancers'}]}/></Field><Field label="Search"><Input aria-label="Search attendance" value={scope.search??''} onChange={e=>change('search',e.target.value)} placeholder="Name or staff reference"/></Field></>}
+    </div>
+    {q.isPending&&<p className="p-5" role="status">Loading attendance…</p>}
+    {q.isError&&<p role="alert" className="p-4 text-sm text-danger-600">{q.data?'Showing the last successful update. ':''}{errorMessage(q.error)}</p>}
+    {q.data&&<><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left text-xs"><thead className="bg-mist text-ink-muted"><tr>{['Worker','Roster / effective interval','Platform / department','Attendance','Laptop / custody','Evidence',''].map((h,i)=><th key={i} className="p-3 font-medium">{h}</th>)}</tr></thead><tbody>{q.data.items.map(r=><tr key={r.id} className="border-t border-line"><td className="p-3"><strong>{r.workerName}</strong><br/>{r.staffNumber}<br/>{r.workerType.toLowerCase()}</td><td className="p-3">{r.rosterDate} · {r.shift.toLowerCase()}<br/>{businessDateTime(r.effectiveStart)}<br/>→ {businessDateTime(r.effectiveEnd)}</td><td className="p-3">{r.platformCode}<br/>{r.department}</td><td className="p-3">{attendanceLabel(r.status)}<br/>{r.punctuality.replace(/_/g,' ').toLowerCase()}</td><td className="p-3">{r.assetId??'Attendance only'}<br/>{r.custody?r.custody.releasedAt?'Returned':'Currently held':'No custody'}</td><td className="p-3">Device {businessDateTime(r.deviceTimestamp)}<br/>Server {businessDateTime(r.acceptedAt)}<br/>{r.verification.replace(/_/g,' ').toLowerCase()}{r.revision>1?' · Reviewed':''}{r.notes||r.equipmentIssue?' · Notes':''}</td><td className="p-3"><Button size="xs" variant="secondary" onClick={()=>setDetail(r.id)}>View record</Button></td></tr>)}</tbody></table>{!q.data.items.length&&<p className="p-6 text-sm text-ink-muted">No submitted confirmations match these filters. Non-submission does not establish absence.</p>}</div><Pagination total={q.data.total} page={scope.page??1} pageSize={25} onPage={page=>setScope(s=>({...s,page}))}/></>}
+    {detail&&<AttendanceDetails id={detail} onClose={()=>setDetail(null)}/>}
+  </Card>;
+}
+export function AttendanceDetails({id,onClose}:{id:string;onClose:()=>void}) {
+  const q=useQuery({queryKey:['attendance','detail',id],queryFn:()=>api.getShiftAttendanceDetail(id),refetchInterval:15000});
+  const correct=useSessionStore(s=>s.user?.role==='SUPERVISOR'&&s.permissions.includes('attendance.correct'));
+  const [reason,setReason]=useState('');const cache=useQueryClient();
+  const review=useMutation({mutationFn:(status:'CONFIRMED'|'VOIDED')=>{if(!q.data)throw new Error('Reload the confirmation before reviewing.');return api.reviewShiftAttendance(id,{expectedRevision:q.data.revision,status,reason});},onSuccess:()=>Promise.all(['attendance','employees','freelancers','profile'].map(key=>cache.invalidateQueries({queryKey:[key]})))});
+  const r=q.data;
+  return <Dialog open portal backdropBlur size="lg" title="Attendance confirmation" description={id} onClose={onClose}><div className="space-y-4">
+    {q.isPending&&<p role="status">Loading confirmation…</p>}{q.isError&&<p role="alert">{errorMessage(q.error)}</p>}
+    {r&&<><div role="status" className="rounded-xl bg-primary-50 p-4 text-sm"><strong>{attendanceLabel(r.status)}</strong> · {r.workerName} · {r.staffNumber}<p className="mt-2">{r.platformCode} · {r.department} · {r.rosterDate} · {r.shift}</p></div><dl className="grid gap-4 text-sm sm:grid-cols-2">{[['Effective start',businessDateTime(r.effectiveStart)],['Effective end',businessDateTime(r.effectiveEnd)],['Device attendance time (authoritative)',businessDateTime(r.deviceTimestamp)],['Server receipt time',businessDateTime(r.acceptedAt)],['Punctuality',r.punctuality.replace(/_/g,' ')],['Verification',r.verification.replace(/_/g,' ')],['Laptop',r.assetId??'No laptop claimed'],['Physical return',r.custody?.releasedAt?businessDateTime(r.custody.releasedAt):r.custody?'Still held':'No custody'],['Special notes',r.notes||'—'],['Equipment issue',r.equipmentIssue||'—'],['Exception reason',r.exceptionReason||'—']].map(([label,value])=><div key={label}><dt className="text-xs text-ink-muted">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{value}</dd></div>)}</dl><p className="text-xs text-ink-muted">Attendance is a personal declaration. Receipt and return are recorded separately. A start confirmation does not count as twelve completed work hours.</p>
+      <div><h3 className="text-sm font-semibold">Custody and review events</h3>{r.events?.map(e=><p key={e.id} className="mt-2 border-l-2 border-primary-200 pl-3 text-xs leading-5">{e.kind.replace(/_/g,' ')} · {businessDateTime(e.recordedAt)}<br/>{e.notes}</p>)}</div>
+      {!!r.corrections?.length&&<div><h3 className="text-sm font-semibold">Review history</h3>{r.corrections.map(c=><p key={c.id} className="mt-2 text-xs">{businessDateTime(c.recordedAt)} · {c.actorName}<br/>{c.reason}</p>)}</div>}
+      {correct&&<div className="space-y-3 border-t border-line pt-4"><Field label="Review / correction reason" htmlFor="attendance-review-reason"><Textarea id="attendance-review-reason" maxLength={2000} value={reason} onChange={e=>setReason(e.target.value)}/></Field><p className="text-xs text-ink-muted">Review preserves original timestamps. Voiding attendance does not return a physically held laptop.</p><div className="flex gap-2"><Button size="sm" loading={review.isPending} disabled={reason.trim().length<5} onClick={()=>review.mutate('CONFIRMED')}>Confirm after review</Button><Button size="sm" variant="danger" disabled={review.isPending||reason.trim().length<5} onClick={()=>review.mutate('VOIDED')}>Void record</Button></div>{review.isError&&<p role="alert">{errorMessage(review.error)}</p>}</div>}
+    </>}
+  </div></Dialog>;
+}
+
+

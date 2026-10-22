@@ -1,7 +1,16 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { XIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
+
+const DialogDepth = createContext(0);
+const activeDialogs: {id:string;depth:number;element:HTMLDivElement}[] = [];
+let previousBodyOverflow = '';
+function updateDialogLayers() {
+  activeDialogs.sort((a,b)=>a.depth-b.depth);
+  activeDialogs.forEach((dialog,index)=>{dialog.element.style.zIndex=String(50+index*2);});
+}
 
 interface DialogProps {
   open: boolean;
@@ -12,29 +21,44 @@ interface DialogProps {
   footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
   placement?: 'center' | 'right';
+  backdropBlur?: boolean;
+  portal?: boolean;
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, size = 'md', placement = 'center' }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, size = 'md', placement = 'center', backdropBlur = false, portal = true }: DialogProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const depth = useContext(DialogDepth);
   const titleId = useId();
+  const descriptionId = useId();
   const reducedMotion = useReducedMotion();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
-    if (!open) return;
+    if (!open || !layerRef.current) return;
     const prev = document.activeElement as HTMLElement | null;
+    if(!activeDialogs.length){previousBodyOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+    activeDialogs.push({id:titleId,depth,element:layerRef.current});
+    updateDialogLayers();
+    const isTop = () => activeDialogs[activeDialogs.length-1]?.id === titleId;
     const t = setTimeout(() => {
+      if(!isTop())return;
       const el = ref.current?.querySelector<HTMLElement>('a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([data-close])');
-      el?.focus();
+      (el ?? ref.current)?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeRef.current();
+      if(!isTop())return;
+      if (e.key === 'Escape') {e.preventDefault();e.stopPropagation();closeRef.current();}
       if (e.key === 'Tab' && ref.current) {
-        const f = ref.current.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)');
-        if (!f.length) return;
+        const f = Array.from(ref.current.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]):not(:disabled)'))
+          .filter(el=>el.tabIndex>=0&&!el.closest('[hidden],[inert]')&&!(el instanceof HTMLInputElement&&el.type==='hidden'))
+          .sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+        if (!f.length) {e.preventDefault();ref.current.focus();return;}
         const first = f[0];
         const last = f[f.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+        if (!ref.current.contains(document.activeElement)) {
+          e.preventDefault();(e.shiftKey ? last : first).focus();
+        } else if (e.shiftKey && document.activeElement === first) {
           e.preventDefault();
           last.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
@@ -47,16 +71,21 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     return () => {
       clearTimeout(t);
       document.removeEventListener('keydown', onKey);
-      prev?.focus();
+      const restoreFocus=isTop();
+      const index=activeDialogs.findIndex(dialog=>dialog.id===titleId);
+      if(index!==-1)activeDialogs.splice(index,1);
+      updateDialogLayers();
+      if(!activeDialogs.length)document.body.style.overflow=previousBodyOverflow;
+      if(restoreFocus&&prev?.isConnected)prev.focus();
     };
-  }, [open]);
+  }, [open,titleId,depth]);
 
-  return (
-    <AnimatePresence>
+  const content = (
+    <DialogDepth.Provider value={depth+1}><AnimatePresence>
       {open &&
-      <div className={cn('fixed inset-0 z-50 flex', placement === 'right' ? 'items-stretch justify-end' : 'items-end justify-center p-0 sm:items-center sm:p-4')}>
+      <div ref={layerRef} data-dialog-layer className={cn('fixed inset-0 z-50 flex', placement === 'right' ? 'items-stretch justify-end' : 'items-end justify-center p-0 sm:items-center sm:p-4')}>
           <motion.div
-          className="absolute inset-0 bg-ink/40"
+          className={cn('absolute inset-0 bg-ink/40',backdropBlur&&'backdrop-blur-md')}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -68,6 +97,8 @@ export function Dialog({ open, onClose, title, description, children, footer, si
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
+          aria-describedby={description ? descriptionId : undefined}
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -83,7 +114,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
                 <h2 id={titleId} className="text-base font-semibold text-ink">
                   {title}
                 </h2>
-                {description && <p className="mt-0.5 text-sm text-ink-muted">{description}</p>}
+                {description && <p id={descriptionId} className="mt-0.5 text-sm text-ink-muted">{description}</p>}
               </div>
               <button data-close onClick={onClose} className="rounded-lg p-1 text-ink-subtle hover:bg-mist hover:text-ink" aria-label="Close dialog">
                 <XIcon className="h-5 w-5" />
@@ -94,6 +125,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
           </motion.div>
         </div>
       }
-    </AnimatePresence>);
+    </AnimatePresence></DialogDepth.Provider>);
 
+  return portal ? createPortal(content,document.body) : content;
 }

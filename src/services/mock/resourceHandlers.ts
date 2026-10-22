@@ -7,6 +7,7 @@ import { ApiError, currentAuth, requireRole, respond } from './core';
 import { db, pushAudit, poolIdOf } from './db';
 import { allPools, paginate, poolSummary, textMatch } from './selectors';
 import { businessDate, handoverInstant } from '../../utils/shiftTime';
+import { workstationInventory } from './workstationInventory';
 
 const nowIso = () => format(SERVER_NOW, "yyyy-MM-dd'T'HH:mm:ss");
 
@@ -74,6 +75,27 @@ function createIncidentFromHandover(h: Handover, c: ChecklistResult, reporterId:
 }
 
 export const resourceApi = {
+  listWorkstations: (q: Omit<LaptopQuery, 'status'> = {}) => respond(() => {
+    requireRole('SUPERVISOR');
+    const rows = workstationInventory().filter(row =>
+      (!q.platform || row.platformCode === q.platform) && (!q.category || row.categoryCode === q.category) &&
+      (!q.dept || row.dept === q.dept) && textMatch(q.search, row.poolId, row.workstationId, row.laptop?.assetId, row.laptop?.serial, row.laptop?.model, row.laptop?.currentUserId, row.laptop?.currentUserName));
+    return paginate(rows, q.page, q.pageSize ?? 25);
+  }),
+
+  getWorkstation: (id: string) => respond(() => {
+    requireRole('SUPERVISOR');
+    const workstation = workstationInventory().find(row => row.workstationId === id);
+    if (!workstation) throw new ApiError('NOT_FOUND', 'This workstation is no longer configured. Refresh the inventory.', 404);
+    const assetId = workstation.laptop?.assetId;
+    const history: LaptopHistoryEntry[] = assetId ? [
+      ...db.handovers.filter(h => h.assetId === assetId && h.status === 'COMPLETED').map(h => ({at: h.receivedAt ?? h.scheduledAt, kind: 'HANDOVER' as const, title: `${h.outgoingName} → ${h.incomingName}`, detail: `${h.outgoingShift} → ${h.incomingShift}`, status: h.status})),
+      ...db.incidents.filter(i => i.assetId === assetId).map(i => ({at: i.createdAt, kind: 'INCIDENT' as const, title: i.title, detail: `${i.id} · ${i.severity}`, status: i.status})),
+      ...db.audit.filter(a => a.entity === 'Laptop' && a.entityId === assetId).map(a => ({at: a.at, kind: 'ASSIGNMENT' as const, title: a.action.replace(/_/g, ' '), detail: a.reason, status: ''})),
+    ].sort((a, b) => b.at.localeCompare(a.at)) : [];
+    return { workstation, history };
+  }),
+
   listPools: (q: PoolQuery): Promise<PoolSummary[]> =>
   respond(() => {
     requireRole('SUPERVISOR');

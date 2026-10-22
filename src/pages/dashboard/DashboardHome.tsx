@@ -6,5 +6,6 @@ import { BreakDashboardSummary } from '../../features/break-management/Dashboard
 
 export function DashboardHome() {
   const role = useSessionStore((s) => s.user?.role);
-  return <><BreakDashboardSummary />{role === 'EMPLOYEE' ? <EmployeeDashboard /> : role === 'FREELANCER' ? <FreelancerDashboard /> : <OpsDashboard />}</>;
+  if(role==='SUPERVISOR')return <OpsDashboard />;
+  return <><BreakDashboardSummary />{role === 'EMPLOYEE' ? <EmployeeDashboard /> : <FreelancerDashboard />}</>;
 }

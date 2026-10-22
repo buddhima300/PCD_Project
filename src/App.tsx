@@ -42,11 +42,8 @@ const MyAvailability = named(() => import('./pages/scheduling/MyAvailability'), 
 const ReplacementCenter = named(() => import('./pages/replacements/ReplacementCenter'), 'ReplacementCenter');
 const ReplacementDetail = named(() => import('./pages/replacements/ReplacementDetail'), 'ReplacementDetail');
 const MyAssignments = named(() => import('./pages/replacements/MyAssignments'), 'MyAssignments');
-const WorkstationPools = named(() => import('./pages/resources/WorkstationPools'), 'WorkstationPools');
-const PoolDetail = named(() => import('./pages/resources/PoolDetail'), 'PoolDetail');
 const Laptops = named(() => import('./pages/resources/Laptops'), 'Laptops');
 const LaptopDetail = named(() => import('./pages/resources/LaptopDetail'), 'LaptopDetail');
-const Incidents = named(() => import('./pages/resources/Incidents'), 'Incidents');
 const ReportIssue = named(() => import('./pages/resources/ReportIssue'), 'ReportIssue');
 const MyWorkstation = named(() => import('./pages/resources/MyWorkstation'), 'MyWorkstation');
 const MyPlatform = named(() => import('./pages/resources/MyPlatform'), 'MyPlatform');
@@ -112,11 +109,11 @@ export function App() {
             <Route path="off-days" element={g(SUP, <OffDays />)} />
             <Route path="replacements" element={g(SUP, <ReplacementCenter />)} />
             <Route path="replacements/:id" element={g(['SUPERVISOR', 'FREELANCER'], <ReplacementDetail />)} />
-            <Route path="pools" element={g(SUP, <WorkstationPools />)} />
-            <Route path="pools/:id" element={g(SUP, <PoolDetail />)} />
+            <Route path="pools" element={g(SUP, <Navigate to="/equipment" replace />)} />
+            <Route path="pools/:id" element={g(SUP, <Navigate to="/equipment" replace />)} />
             <Route path="laptops" element={g(SUP, <Laptops />)} />
             <Route path="laptops/:assetId" element={g(SUP, <LaptopDetail />)} />
-            <Route path="incidents" element={g(SUP, <Incidents />)} />
+            <Route path="incidents" element={g(SUP, <Navigate to="/equipment" replace />)} />
             <Route path="disciplinary" element={g(SUP, <DisciplinaryManagement />)} />
             <Route path="my/disciplinary" element={g(STAFF, <MyDisciplinaryRecords />)} />
             <Route path="my/breaks" element={g(STAFF, <BreakManagementPage />)} />

@@ -17,7 +17,7 @@ export function WorkstationPools() {
   const [state, setState] = useState<PoolQuery['state']>('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const query: PoolQuery = { ...scope, state };
-  const q = useQuery({ queryKey: ['pools', query], queryFn: () => api.listPools(query) });
+  const q = useQuery({ queryKey: ['pools', query], queryFn: () => api.listPools(query),refetchInterval:15000 });
 
   return (
     <div>

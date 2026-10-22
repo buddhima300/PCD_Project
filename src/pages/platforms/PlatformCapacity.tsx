@@ -9,7 +9,6 @@ import { Dialog } from '../../components/ui/Dialog';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { ScopeFilters, type Scope } from '../../components/ui/ScopeFilters';
 import { QueryView } from '../../components/ui/States';
-import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Tabs } from '../../components/ui/Tabs';
 import { api } from '../../services/api';
 import type { DeptCode, DeptOccupancy, PlatformSummary, ShiftCode } from '../../types/domain';
@@ -56,7 +55,6 @@ export function PlatformCapacity() {
                       </th>
                   )}
                     <th scope="col" className="px-3 py-2.5 text-left">Overall</th>
-                    <th scope="col" className="px-4 py-2.5 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -80,7 +78,6 @@ export function PlatformCapacity() {
 
                       })}
                         <td className="px-3 py-2 tabular font-semibold">{total} / {p.totalWorkstations}</td>
-                        <td className="px-4 py-2"><StatusBadge status={p.opStatus} size="xs" /></td>
                       </tr>);
 
                 })}
@@ -96,7 +93,7 @@ export function PlatformCapacity() {
         size="sm"
         title={sel ? `${sel.p.code} / ${sel.o.dept} workstation pool` : ''}
         description={sel ? `${sel.o.capacity} configured workstations` : ''}
-        footer={sel && <Link to={`/pools/${sel.o.poolId}`}><Button size="sm">Open pool</Button></Link>}>
+        footer={sel && <Link to="/equipment"><Button size="sm">Open equipment inventory</Button></Link>}>
         
         {sel &&
         <div className="space-y-3">

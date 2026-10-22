@@ -62,7 +62,7 @@ try {
     await page.goto(`${origin}/login`);
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
-    await expect(page.locator('html')).not.toHaveClass(/elite-theme/);
+    await expect(page.locator('html')).toHaveClass(/elite-theme/);
     const loginBefore = await page.screenshot({ path: `${output}/${role}-login-before.png`, fullPage: true });
     await page.getByLabel('Work email', { exact: true }).fill(`${role.toLowerCase()}@example.test`);
     await page.getByLabel('Password', { exact: true }).fill(password);
@@ -109,12 +109,12 @@ try {
       await page.keyboard.press('Escape');
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
-    // Log out through the UI and ensure the theme is removed before login is painted.
+    // Log out through the UI and ensure the shared theme remains consistent on login.
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.locator('header.app-glass-bar button[aria-haspopup="menu"]').click();
     await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
-    await expect(page.locator('html')).not.toHaveClass(/elite-theme/);
+    await expect(page.locator('html')).toHaveClass(/elite-theme/);
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);

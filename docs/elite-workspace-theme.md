@@ -6,13 +6,29 @@ The authenticated application uses the supplied indigo (`#262262`), orange (`#f1
 
 `src/button-effects.css` applies the subsequently supplied reflective button treatment over the base action gradients: a white-lit outer rim, dark radial inner surface, cyan/blue glow at the lower left, and soft reflected light at the upper right. It combines the supplied decorative layers into pseudo-elements, preserving existing button dimensions, labels, icons, loading indicators, focus outlines and event targets. Shared `Button` variants and prominent action links receive the effect; disabled controls suppress the glow. The treatment is scoped to authenticated workspaces.
 
-`AppShell` adds the `elite-theme` class to the document while an authenticated workspace is mounted, and removes it on unmount. This also themes overlays and toast notifications. The login screen, its CSS, and the original `agency-theme.css` are preserved.
+`AppShell` and `Login` apply the `elite-theme` class while mounted, giving the public login and authenticated workspaces the same palette and reflective button treatment. Login uses a matching indigo glass card, lime focus states and orange accents. Sign-in, remembered email, validation, password visibility, help and motion controls retain their existing behavior. The original `agency-theme.css` remains available as the base layer.
 
 `RadialProgress` provides gradient SVG rings for platform activity, workforce vacancies, off-day balances, freelancer workload and profile statistics. Each ring has a unique gradient ID and a named progressbar with a textual value. Empty capacity and values above capacity are handled without invalid arcs. Counts come from existing APIs.
 
 Keyboard focus uses lime outlines. Mobile controls, wrapping banners, reduced motion, reduced transparency and opaque backdrop fallbacks are included. Continuous animation is limited to decorative background elements and disabled on mobile and when reduced motion is requested.
 
 ## Verification
+
+Login-specific responsive and interaction checks:
+
+```sh
+node scripts/verify-login-theme.mjs
+```
+
+## Login wallpaper
+
+The supervisor dashboard additionally uses the supplied reference image at `public/images/supervisor-glass-reference.png`. Its treatment lives in `src/supervisor-dashboard-glass.css`, scoped to `[data-workspace='dashboard']`. The decorative fixed background is blended at 20% opacity (14% on mobile). Dashboard cards and subcards use translucent indigo/blue fills, reflective gradient edges, backdrop blur and soft shadows; reduced-transparency and unsupported-backdrop fallbacks use opaque surfaces. Other workspaces and the login keep their own backgrounds.
+
+Created with the built-in image generation tool and saved as `public/images/login-double-exposure-indigo.png`. The original wallpaper is retained. This new landscape image is a background asset, with the sign-in form rendered as live HTML above it.
+
+Generation prompt:
+
+> Create a premium photorealistic double-exposure wallpaper for PortCity Digital workforce operations login. Landscape 16:9 wide composition. Left 55 percent contains an elegant side-profile silhouette of a professional person blended photographically with a luminous modern coastal city skyline and subtle workplace architecture, true double exposure with seamless translucent overlays. Surround with sparse floating optically clear fluted glass rectangles, tall thin glass prisms and a few small iridescent glass spheres inspired by luxury blue glass product photography. Deep midnight indigo #262262 and near-black #0e0d1d base, electric cobalt blue and violet light, restrained cyan refractions and tiny orange #f16623 edge-light accents. Professional, sophisticated, cinematic, realistic materials, layered depth, tasteful bloom, refined visual hierarchy. Art concentrated upper-left and left-center; lower-left subdued dark space for white headline overlaid later. Rightmost 45 percent should fade smoothly to very dark indigo negative space for a login form. No text, no lettering, no logos, no boxes with branding, no interface, no watermark. A full-bleed website wallpaper, not a screenshot or mockup.
 
 Run the production build and the affected component tests:
 

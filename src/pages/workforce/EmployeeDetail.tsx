@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AttendanceRegister } from '../../components/attendance/AttendanceRegister';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { LockIcon, MailIcon, PhoneIcon } from 'lucide-react';
@@ -34,7 +35,8 @@ export function EmployeeDetail() {
         meta={<><StatusBadge status={e.status} /><StatusBadge status={e.accountStatus} /></>}
         description={`${e.id} · ${e.position} · joined ${fmtDate(e.joinedAt)}`} />
       
-      <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
+      <AttendanceRegister workerId={id}/>
+      <div className="mt-5 grid gap-4 xl:grid-cols-[320px_1fr]">
         <Card className="h-fit p-5">
           <OffDayBalance detail={q.data} /><EmployeeCareerSummary employee={e} /><EmployeePlatformAction employee={e} /><h2 className="text-sm font-semibold">Operational assignment</h2>
           <dl className="mt-3 space-y-3 text-sm">

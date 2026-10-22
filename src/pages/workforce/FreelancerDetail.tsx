@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AttendanceRegister } from '../../components/attendance/AttendanceRegister';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MailIcon, PhoneIcon } from 'lucide-react';
@@ -25,7 +26,8 @@ export function FreelancerDetail() {
   return (
     <div>
       <PageHeader breadcrumbs={[{ label: 'Freelancers', to: '/freelancers' }, { label: f.id }]} title={f.name} meta={<StatusBadge status={f.status} />} description={`${f.id} · ${deptNames[f.dept]} · Priority ${f.priority}`} />
-      <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
+      <AttendanceRegister workerId={id}/>
+      <div className="mt-5 grid gap-4 xl:grid-cols-[320px_1fr]">
         <div className="space-y-4">
           <Card className="p-5">
             <dl className="space-y-3 text-sm">

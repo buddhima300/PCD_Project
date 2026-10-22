@@ -1,4 +1,8 @@
-import type { ShiftCode } from './domain';
+import type { DeptCode, Laptop, ShiftCode } from './domain';
+export interface WorkstationInventoryRow {
+  workstationId:string; poolId:string; platformCode:string; categoryCode:string; dept:DeptCode;
+  laptop:Laptop|null;
+}
 export interface EquipmentContext { poolId:string; date:string; shift:ShiftCode }
 export interface EquipmentAllocation extends EquipmentContext {
   id:string;workerId:string;workerName:string;platformCode:string;dept:string;assetId:string;workstationId:string;

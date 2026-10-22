@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftRightIcon, ShieldAlertIcon } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
@@ -12,7 +12,7 @@ import { fmtDate, fmtDateTime } from '../../utils/format';
 
 export function LaptopDetail() {
   const { assetId = '' } = useParams();
-  const q = useQuery({ queryKey: ['laptop', assetId], queryFn: () => api.getLaptop(assetId) });
+  const q = useQuery({ queryKey: ['laptop', assetId], queryFn: () => api.getLaptop(assetId),refetchInterval:15000 });
   if (q.isPending) return <LoadingBlock rows={8} />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
   const { laptop: l, history } = q.data;
@@ -29,7 +29,7 @@ export function LaptopDetail() {
           <Card className="p-5">
             <h2 className="text-sm font-semibold">Resource assignment</h2>
             <dl className="mt-3 space-y-3 text-sm">
-              <div className="flex justify-between"><dt className="text-ink-muted">Pool</dt><dd><Link to={`/pools/${l.poolId}`} className="flex items-center gap-1.5 hover:text-primary">{l.platformCode} <DeptTag dept={l.dept} /></Link></dd></div>
+              <div className="flex justify-between"><dt className="text-ink-muted">Pool</dt><dd className="flex items-center gap-1.5">{l.platformCode} <DeptTag dept={l.dept} /></dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Current user</dt><dd>{l.currentUserId ? <IdText>{l.currentUserId}</IdText> : '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Current shift</dt><dd>{l.currentShift ? <ShiftTag shift={l.currentShift} /> : '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-muted">Open incident</dt><dd>{l.openIncidentId ? <IdText className="text-danger-600">{l.openIncidentId}</IdText> : 'None'}</dd></div>

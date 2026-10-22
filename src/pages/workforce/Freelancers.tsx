@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { AttendanceBadge, DirectoryAttendanceFilters } from '../../components/attendance/AttendanceRegister';
+import { initialAttendanceScope } from '../../components/attendance/attendance-utils';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { UserPlusIcon } from 'lucide-react';
@@ -23,6 +25,7 @@ import { deptNames } from '../../utils/format';
 type Tab = 'directory' | 'priority' | 'availability';
 
 export function Freelancers() {
+  const [attendance,setAttendance]=useState(initialAttendanceScope);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') as Tab ?? 'directory';
@@ -30,8 +33,8 @@ export function Freelancers() {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const query = { dept, status, search, page, pageSize: 25 };
-  const q = useQuery({ queryKey: ['freelancers', query], queryFn: () => api.listFreelancers(query), placeholderData: keepPreviousData, enabled: tab === 'directory' });
+  const query = { dept, status, search, page, pageSize: 25, attendance };
+  const q = useQuery({ queryKey: ['freelancers', query], queryFn: () => api.listFreelancers(query), placeholderData: keepPreviousData, enabled: tab === 'directory',refetchInterval:15000 });
 
   return (
     <div>
@@ -41,12 +44,13 @@ export function Freelancers() {
       {tab === 'availability' && <AvailabilityBoard />}
       {tab === 'directory' &&
       <Card>
+          <DirectoryAttendanceFilters value={attendance} onChange={v=>{setAttendance(v);setPage(1);}}/>
           <div className="flex flex-wrap gap-2 border-b border-line p-3">
             <SearchInput value={search} onChange={(v) => {setSearch(v);setPage(1);}} placeholder="Search ID or name" className="w-60" />
             <Select compact className="w-44" aria-label="Department" value={dept} onChange={(e) => {setDept(e.target.value as DeptCode);setPage(1);}} placeholder="All departments" options={(Object.keys(deptNames) as DeptCode[]).map((d) => ({ value: d, label: `${d} · ${deptNames[d]}` }))} />
             <Select compact className="w-32" aria-label="Status" value={status} onChange={(e) => {setStatus(e.target.value);setPage(1);}} placeholder="Any status" options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]} />
           </div>
-          <QueryView query={q} isEmpty={(d) => d.items.length === 0}>
+          <QueryView query={q} retainOnError isEmpty={(d) => d.items.length === 0}>
             {(d) =>
           <>
                 <DataTable
@@ -56,6 +60,7 @@ export function Freelancers() {
               columns={[
               { key: 'id', header: 'Freelancer', cell: (r) => <IdText>{r.staffNumber??r.id}</IdText> },
               { key: 'name', header: 'Name', cell: (r) => <span className="font-medium">{r.name}</span> },
+              { key: 'attendance', header: 'Attendance', cell: (r) => <AttendanceBadge summary={r.attendance}/> },
               { key: 'dept', header: 'Dept', cell: (r) => <DeptTag dept={r.dept} /> },
               { key: 'prio', header: 'Priority', align: 'right', cell: (r) => r.priority },
               { key: 'av', header: 'Today M / N', cell: (r) => <span className="flex gap-1"><StatusBadge status={r.todayMorning} size="xs" /><StatusBadge status={r.todayNight} size="xs" /></span> },

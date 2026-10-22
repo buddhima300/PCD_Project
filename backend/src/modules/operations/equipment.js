@@ -5,7 +5,7 @@ import { ApiError } from '../../shared/errors.js';
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => Number.isFinite(Date.parse(s)) && new Date(s).toISOString().slice(0,10) === s);
 const context = z.object({poolId:z.string().min(1),date:day,shift:z.enum(['MORNING','NIGHT'])}).strict();
 const create = context.extend({assetId:z.string().min(1),workerId:z.string().min(1)}).strict();
-export const equipmentMethods = new Set(['getEquipmentAllocations','reserveEquipment','cancelEquipmentAllocation','getSharedDevices','receiveSharedDevice','returnSharedDevice','registerPlatformDevice']);
+export const equipmentMethods = new Set(['getEquipmentAllocations','reserveEquipment','cancelEquipmentAllocation','getSharedDevices','receiveSharedDevice','returnSharedDevice','registerPlatformDevice','listLaptopModels','addLaptopModel','updateLaptopModel']);
 export function shiftContext(now = new Date()) {
   const local = new Date(now.getTime()+330*60000);
   const minutes = local.getUTCHours()*60+local.getUTCMinutes();
@@ -90,12 +90,40 @@ function sharedDeviceOperation(auth,state,method,args,allocations) {
 export async function equipmentOperation(client,auth,state,method,args,allocations) {
   if (['getSharedDevices','receiveSharedDevice','returnSharedDevice'].includes(method)) return sharedDeviceOperation(auth,state,method,args,allocations);
   if (auth.user.role !== 'SUPERVISOR') fail('FORBIDDEN','Only supervisors can allocate workstations.',403);
+  const models=()=>[...new Set([...(state.laptopModels??[]),...state.laptops.map(l=>l.model)].filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const modelName=z.string().trim().min(1).max(100);
+  if(method==='listLaptopModels'){z.tuple([]).parse(args);return models();}
+  if(method==='addLaptopModel'){
+    const [name]=z.tuple([modelName]).parse(args);
+    const existing=models().find(m=>m.toLowerCase()===name.toLowerCase());
+    if(existing)return existing;
+    state.laptopModels=[...(state.laptopModels??[]),name];
+    return name;
+  }
+  if(method==='updateLaptopModel'){
+    const [assetId,input]=z.tuple([z.string().min(1),z.object({model:modelName,expectedModel:z.string().max(100)}).strict()]).parse(args);
+    const laptop=state.laptops.find(l=>l.assetId===assetId);
+    if(!laptop)fail('NOT_FOUND','Laptop not found.',404);
+    if(laptop.model!==input.expectedModel)fail('CONCURRENCY_CONFLICT','This laptop model changed. Refresh the inventory before editing.');
+    const model=models().find(m=>m.toLowerCase()===input.model.toLowerCase());
+    if(!model)fail('VALIDATION','Choose a saved laptop model or add it first.',422);
+    if(laptop.model===model)return laptop;
+    const previous=laptop.model;laptop.model=model;
+    state.audit.unshift({id:`AUD-${randomUUID()}`,at:new Date().toISOString(),actorId:auth.user.id,actorName:auth.user.name,role:'SUPERVISOR',action:'LAPTOP_MODEL_UPDATED',entity:'Laptop',entityId:assetId,platformCode:laptop.platformCode,dept:laptop.dept,previous,next:model,reason:'Supervisor updated laptop model from asset inventory',isOverride:false});
+    return laptop;
+  }
   if (method === 'registerPlatformDevice') {
-    const [input] = z.tuple([z.object({poolId:z.string().min(1),assetId:z.string().trim().regex(/^[A-Za-z0-9_-]{1,80}$/),serial:z.string().trim().min(1).max(100),model:z.string().trim().min(1).max(100)}).strict()]).parse(args);
+    const [input] = z.tuple([z.object({poolId:z.string().min(1),workstationId:z.string().min(1).max(100).optional(),assetId:z.string().trim().regex(/^[A-Za-z0-9_-]{1,80}$/),serial:z.string().trim().min(1).max(100),model:z.string().trim().min(1).max(100)}).strict()]).parse(args);
     const {p,dept,capacity} = pool(state,input.poolId);
     if (state.laptops.some(l => l.assetId.toLowerCase() === input.assetId.toLowerCase() || l.serial.toLowerCase() === input.serial.toLowerCase())) fail('DUPLICATE_DEVICE','Asset ID and serial must be unique.');
-    const used = new Set(state.laptops.filter(l => l.poolId === input.poolId && l.status !== 'RETIRED').map(l => Number(l.workstationId?.split('-').at(-1))));
+    const used = new Set(state.laptops.filter(l => l.poolId === input.poolId && l.status !== 'RETIRED').map(l => Number(l.workstationId?.match(/(\d+)$/)?.[1])));
     let slot = 1; while (used.has(slot)) slot++;
+    if (input.workstationId) {
+      slot = Number(input.workstationId.match(/(\d+)$/)?.[1]);
+      const expected = `WS-${p.code.replace(/-/g,'')}-${dept}${String(slot).padStart(2,'0')}`;
+      if (!Number.isInteger(slot) || slot < 1 || input.workstationId !== expected || slot > capacity) fail('CAPACITY_CONFLICT','Choose a configured workstation in this pool.');
+      if (used.has(slot)) fail('WORKSTATION_UNAVAILABLE','This workstation already has a registered device. Refresh the inventory.');
+    }
     if (slot > capacity) fail('CAPACITY_CONFLICT','All device places are registered. Increase platform device capacity first.');
     const laptop = {assetId:input.assetId,serial:input.serial,model:input.model,poolId:input.poolId,platformCode:p.code,dept,workstationId:`WS-${p.code.replace('-','')}-${dept}-${String(slot).padStart(2,'0')}`,status:'AVAILABLE',condition:'GOOD',currentUserId:null,currentUserName:null,currentShift:null,nextUserId:null,nextUserName:null,nextUserNote:null,handoverStatus:null,openIncidentId:null,purchasedAt:new Date().toISOString().slice(0,10)};
     state.laptops.push(laptop);
@@ -191,13 +219,14 @@ export function enrichEquipment(result,state,allocations,scope = {}) {
           const activeHandovers = handovers.filter(h => h.incomingId && (!h.receivedAt || state.laptops.some(l => l.assetId === h.assetId && l.currentUserId === h.incomingId)));
           const allocatedWorkers = new Set([...assigned.map(a => a.workerId),...activeHandovers.map(h => h.incomingId)]);
           const allocated = allocatedWorkers.size;
-          const live = shift === current.shift ? new Set(handovers.filter(h => h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason) && state.laptops.some(l => l.assetId === h.assetId && l.currentUserId === h.incomingId)).map(h => h.assetId)).size : 0;
+          const held=(state.shiftCustody??[]).filter(c=>c.date===current.date&&c.shift===shift&&assets.some(l=>l.assetId===c.asset_id));
+          const live = shift === current.shift ? new Set([...held.map(c=>c.asset_id),...handovers.filter(h => h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason) && state.laptops.some(l => l.assetId === h.assetId && l.currentUserId === h.incomingId)).map(h => h.assetId)]).size : 0;
           const target = value.staffingTargets?.[o.dept]?.[shift] ?? o.capacity;
           const pending = 0;
           const invalid = assigned.filter(a => !workers.some(w => w.id === a.workerId) || !assets.some(l => l.assetId === a.assetId && l.workstationId === a.workstationId)).length;
           const conflicts = Math.max(invalid,Math.max(0,allocated-o.capacity));
           const booked = new Set([...assigned.map(a => a.assetId),...activeHandovers.map(h => h.assetId)]);
-          const free = new Set(assets.filter(l => !booked.has(l.assetId)).map(l => l.workstationId)).size;
+          const free = new Set(assets.filter(l => !booked.has(l.assetId)&&!l.currentUserId).map(l => l.workstationId)).size;
           return [shift,{production,training,target,allocated,live,pending,usable:usableSeats,capacity:o.capacity,vacancies:Math.max(0,target-production),needsAllocation:0,free,conflicts}];
         }));
         return {...o,coverage,morning:coverage.MORNING.production,night:coverage.NIGHT.production,occupiedNow:coverage[current.shift].live,handoverPending:coverage[current.shift].pending,available:coverage[current.shift].free};
@@ -217,11 +246,12 @@ export function enrichEquipment(result,state,allocations,scope = {}) {
     }
     if (value.poolId === undefined && value.id && value.platformCode && typeof value.capacity === 'number' && typeof value.occupied === 'number') {
       const handovers = state.handovers.filter(h => h.poolId === value.id && instant(h.scheduledAt) === Date.parse(start(current.date,current.shift)));
-      out.occupied = new Set(handovers.filter(h => h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason) && state.laptops.some(l => l.assetId === h.assetId && l.currentUserId === h.incomingId)).map(h => h.assetId)).size;
+      const held=(state.shiftCustody??[]).filter(c=>state.laptops.some(l=>l.assetId===c.asset_id&&l.poolId===value.id));
+      out.occupied = new Set([...held.map(c=>c.asset_id),...handovers.filter(h => h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason) && state.laptops.some(l => l.assetId === h.assetId && l.currentUserId === h.incomingId)).map(h => h.assetId)]).size;
       const active = handovers.filter(h => h.incomingId && (!h.receivedAt || state.laptops.some(l => l.assetId === h.assetId && l.currentUserId === h.incomingId)));
       out.handoverPending = active.filter(h => !h.receivedAt || (!h.outgoingConfirmedAt && !h.selfConfirmationReason)).length;
       const booked = new Set([...active.map(h => h.workstationId),...allocations.filter(a => a.poolId === value.id && a.date === current.date && a.shift === current.shift && a.state !== 'CANCELLED').map(a => a.workstationId)]);
-      out.available = new Set(state.laptops.filter(l => l.poolId === value.id && usable(state,l,value.capacity) && !booked.has(l.workstationId)).map(l => l.workstationId)).size;
+      out.available = new Set(state.laptops.filter(l => l.poolId === value.id && usable(state,l,value.capacity) && !booked.has(l.workstationId)&&!l.currentUserId).map(l => l.workstationId)).size;
     }
     if (value.kpis && Array.isArray(out.platforms)) {
       const active = out.platforms.filter(p => p.status === 'ACTIVE' && p.lifecycle !== 'SETUP');

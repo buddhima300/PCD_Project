@@ -1,6 +1,7 @@
-/* Authenticated workspaces only. The existing agency/login theme remains intact.
+/* Shared dashboard and login palette; workspace effects remain scoped below.
    Reference anchors: indigo #262262, orange #f16623, lime #c6ff33. */
-.agency-theme.elite-theme {
+.agency-theme.elite-theme,
+.agency-theme .login-experience {
   --canvas: 14 13 29;
   --surface: 25 23 47;
   --mist: 38 34 65;

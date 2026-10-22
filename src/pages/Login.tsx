@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,10 @@ const roleConfig = {
 } satisfies Record<Role, { icon: typeof ShieldCheckIcon; title: string; accent: string; copy: string; hint: string }>;
 
 export function Login() {
+  useLayoutEffect(() => {
+    document.documentElement.classList.add('elite-theme');
+    return () => document.documentElement.classList.remove('elite-theme');
+  }, []);
   const user = useSessionStore(state => state.user);
   const signIn = useSessionStore(state => state.signIn);
   const navigate = useNavigate();
@@ -94,7 +98,7 @@ export function Login() {
           </div>
           <div className="login-form-options"><label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted"><input type="checkbox" checked={rememberEmail} onChange={event => setRememberEmail(event.target.checked)} />Remember my email</label><button type="button" onClick={() => setShowHelp(true)} className="text-xs font-medium text-primary">Forgot password?</button></div>
           <AnimatePresence initial={false}>{login.isError && <motion.div role="alert" className="login-api-error" initial={{ opacity: 0, y: isAnimated ? -4 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: isAnimated ? 0.15 : 0 }}><TriangleAlertIcon className="h-4 w-4 shrink-0" aria-hidden /><span>{errorMessage(login.error)}</span></motion.div>}</AnimatePresence>
-          <motion.button type="submit" className="login-submit" disabled={login.isPending} whileHover={isAnimated && !login.isPending ? { y: -2 } : undefined} whileTap={isAnimated ? { scale: 0.99 } : undefined} transition={{ duration: 0.15 }}>
+          <motion.button type="submit" className="login-submit app-effect-button" disabled={login.isPending} whileHover={isAnimated && !login.isPending ? { y: -2 } : undefined} whileTap={isAnimated ? { scale: 0.99 } : undefined} transition={{ duration: 0.15 }}>
             <span>{login.isPending ? 'Signing in…' : 'Login'}</span>{login.isPending ? <span className="login-loading-ring" aria-hidden /> : <ArrowRightIcon className="h-4 w-4" aria-hidden />}
           </motion.button>
         </form>

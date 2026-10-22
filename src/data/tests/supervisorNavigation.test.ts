@@ -17,7 +17,7 @@ describe('supervisor information architecture', () => {
     expect(owners).toHaveLength(1);
     expect([...areaLinks(owners[0], snapshot()), owners[0]].some(link => link.to === item.to)).toBe(true);
   });
-  it.each(['/employees/E-1', '/freelancers/F-1', '/platforms/P-1', '/laptops/L-1', '/pools/1', '/categories/C-1', '/replacements/R-1', '/platform-config/P-1', '/breaks/reports', '/breaks/policy'])('highlights the parent for deep link %s', path => {
+  it.each(['/employees/E-1', '/freelancers/F-1', '/platforms/P-1', '/laptops/L-1', '/categories/C-1', '/replacements/R-1', '/platform-config/P-1', '/breaks/reports', '/breaks/policy'])('highlights the parent for deep link %s', path => {
     expect(supervisorAreaFor(path)).toBeDefined();
   });
   it('does not match unrelated route prefixes', () => {

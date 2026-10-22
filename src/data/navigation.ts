@@ -1,6 +1,6 @@
 import {
   ActivityIcon, ArrowLeftRightIcon, BarChart3Icon, BellIcon, BriefcaseIcon, Building2Icon, CalendarCheckIcon, CalendarDaysIcon,
-  CalendarOffIcon, ClipboardListIcon, Clock3Icon, GaugeIcon, GraduationCapIcon, LaptopIcon, LayersIcon, LayoutDashboardIcon, MonitorSmartphoneIcon,
+  CalendarOffIcon, ClipboardListIcon, Clock3Icon, GaugeIcon, GraduationCapIcon, LaptopIcon, LayersIcon, LayoutDashboardIcon,
   RefreshCwIcon, RepeatIcon, ScrollTextIcon, ServerIcon, SettingsIcon, ShieldAlertIcon, SlidersHorizontalIcon, SparklesIcon, UserCheckIcon,
   UserCircleIcon, UserPlusIcon, UserRoundCogIcon, UsersIcon, TriangleAlertIcon, type LucideIcon } from
 'lucide-react';
@@ -37,9 +37,7 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
   { label: 'Roster', to: '/roster', icon: CalendarDaysIcon, group: 'Scheduling' },
   { label: 'Off-days', to: '/off-days', icon: CalendarOffIcon, group: 'Scheduling' },
   { label: 'Replacements', to: '/replacements', icon: RefreshCwIcon, group: 'Scheduling' },
-  { label: 'Workstation Pools', to: '/pools', icon: MonitorSmartphoneIcon, group: 'Workstations' },
-  { label: 'Laptops', to: '/laptops', icon: LaptopIcon, group: 'Workstations' },
-  { label: 'Incidents', to: '/incidents', icon: ShieldAlertIcon, group: 'Workstations' },
+  { label: 'Asset inventory', to: '/laptops', icon: LaptopIcon, group: 'Workstations' },
   { label: 'Incident & Disciplinary', to: '/disciplinary', icon: ShieldAlertIcon, group: 'People & Conduct' },
   { label: 'Notifications', to: '/notifications', icon: BellIcon, group: 'System' },
   { label: 'Reports', to: '/reports', icon: BarChart3Icon, group: 'System' },

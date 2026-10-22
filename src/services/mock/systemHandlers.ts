@@ -20,6 +20,11 @@ export interface DashboardFilters {
 }
 
 export interface OpsDashboard {
+  analytics?: {
+    workforce?:import('../../types/dashboard').DashboardWorkforce;
+    date:string;currentShift:ShiftCode;serverNow:string;
+    shifts:Record<ShiftCode,{scheduled:number;target:number;confirmed:number|null;needsReview:number|null;devicesHeld:number|null;capacity:number;vacancies:number}>;
+  };
   currentShift: {code: ShiftCode;start: string;end: string;};
   kpis: {
     permanentEmployees: number;

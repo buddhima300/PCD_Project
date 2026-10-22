@@ -90,6 +90,7 @@ export function PermissionDenied({
     </div>;
 }
 interface QueryViewProps<T> {
+  retainOnError?: boolean;
   query: UseQueryResult<T>;
   children: (data: T) => React.ReactNode;
   isEmpty?: (data: T) => boolean;
@@ -97,6 +98,7 @@ interface QueryViewProps<T> {
   loading?: React.ReactNode;
 }
 export function QueryView<T>({
+  retainOnError = false,
   query,
   children,
   isEmpty,
@@ -104,6 +106,7 @@ export function QueryView<T>({
   loading
 }: QueryViewProps<T>) {
   if (query.isPending) return <>{loading ?? <LoadingBlock />}</>;
+  if(query.isError&&retainOnError&&query.data!==undefined)return <><p role="alert" className="p-3 text-sm text-danger-600">Showing the last successful update. Refresh failed. <button className="underline" onClick={()=>query.refetch()}>Retry</button></p>{children(query.data)}</>;
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
   if (isEmpty?.(query.data)) return <>{empty ?? <EmptyState title="No records match these filters" description="Adjust or clear filters to see more results." />}</>;
   return <>{children(query.data)}</>;

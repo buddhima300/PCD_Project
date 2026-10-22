@@ -1,0 +1,45 @@
+import { afterEach,beforeEach,expect,it,vi } from 'vitest';
+import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react';
+import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { AttendanceDashboardCard } from '../../components/attendance/AttendanceDashboardCard';
+import { api } from '../../services/api';
+import type { AttendanceRecord,WorkOccurrence } from '../../types/shiftAttendance';
+vi.mock('../../services/api',()=>({api:{getMyAttendanceContext:vi.fn(),getMyAttendanceDevices:vi.fn(),confirmMyShiftAttendance:vi.fn(),getShiftAttendanceDetail:vi.fn()},errorMessage:(e:Error)=>e.message}));
+const work:WorkOccurrence={id:'occurrence',workerId:'employee',staffNumber:'EMP-1',workerName:'Test employee',workerType:'EMPLOYEE',platformCode:'P1',department:'DP',rosterDate:'2026-10-20',shift:'MORNING',scheduledStart:'2026-10-20T02:00:00Z',scheduledEnd:'2026-10-20T14:00:00Z',effectiveStart:'2026-10-20T02:00:00Z',effectiveEnd:'2026-10-20T14:00:00Z',revision:1,canSubmit:true,reason:null,confirmation:null};
+const record:AttendanceRecord={id:'confirmation',occurrenceId:work.id,workerId:'employee',staffNumber:'EMP-1',workerName:work.workerName,workerType:'EMPLOYEE',platformCode:'P1',department:'DP',rosterDate:work.rosterDate,shift:'MORNING',effectiveStart:work.effectiveStart,effectiveEnd:work.effectiveEnd,acceptedAt:'2026-10-20T02:10:00Z',deviceTimestamp:'2026-10-20T02:09:00Z',status:'CONFIRMED',punctuality:'ON_TIME',verification:'SELF_DECLARED',assetId:'L1',notes:'',equipmentIssue:'',exceptionReason:'',revision:1,custody:null,events:[],corrections:[]};
+beforeEach(()=>{vi.resetAllMocks();vi.mocked(api.getMyAttendanceContext).mockResolvedValue({serverNow:'2026-10-20T02:10:00Z',today:work.rosterDate,workerName:work.workerName,occurrences:[work],openCustody:null,reason:null});vi.mocked(api.getMyAttendanceDevices).mockResolvedValue([{assetId:'L1',serial:'Serial',model:'Laptop',condition:'GOOD',lastReceivedAt:null,lastReturnedAt:null}]);vi.mocked(api.getShiftAttendanceDetail).mockResolvedValue(record);});
+afterEach(cleanup);
+function mount(){const cache=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});render(<MemoryRouter><QueryClientProvider client={cache}><AttendanceDashboardCard/></QueryClientProvider></MemoryRouter>);return cache;}
+it('preserves notes and request identity after an uncertain response; exposes both clocks in the accepted result',async()=>{
+  vi.mocked(api.getMyAttendanceDevices).mockResolvedValue([{assetId:'L1',serial:'Serial',model:'Laptop',condition:'GOOD',workstationId:'WS-P1-DP01',lastReceivedAt:null,lastReturnedAt:null}]);
+  vi.mocked(api.confirmMyShiftAttendance).mockRejectedValueOnce(new Error('Connection interrupted')).mockResolvedValue(record);
+  const cache=mount();
+  fireEvent.click(await screen.findByRole('button',{name:'Confirm handover & attendance'}));
+  await screen.findByRole('option',{name:'WS-P1-DP01 · L1 · Laptop · Serial'});
+  expect(screen.getByText('Available devices for P1 / DP only.')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Available laptop'),{target:{value:'L1'}});
+  fireEvent.change(screen.getByLabelText('Special notes'),{target:{value:'Retain this note'}});
+  fireEvent.click(screen.getByLabelText('I am present for this shift and have physically received the selected laptop.'));
+  fireEvent.click(screen.getByRole('button',{name:'Confirm my shift'}));
+  await screen.findByText('Connection interrupted');
+  expect(screen.getByLabelText('Special notes')).toHaveValue('Retain this note');
+  fireEvent.click(screen.getByRole('button',{name:'Retry same request'}));
+  await screen.findByText('Server receipt time');
+  expect(screen.getByText('Device attendance time (authoritative)')).toBeVisible();
+  const calls=vi.mocked(api.confirmMyShiftAttendance).mock.calls;
+  expect(calls).toHaveLength(2);expect(calls[1][0]).toEqual(calls[0][0]);expect(calls[0][0].deviceTimestamp).toMatch(/Z$/);
+  cache.clear();
+});
+it('requires an exception reason and sends no laptop for attendance-only review',async()=>{
+  vi.mocked(api.confirmMyShiftAttendance).mockResolvedValue({...record,status:'NEEDS_REVIEW',assetId:null});
+  const cache=mount();fireEvent.click(await screen.findByRole('button',{name:'Confirm handover & attendance'}));
+  fireEvent.click(screen.getByLabelText('I cannot receive a usable laptop — request attendance-only review'));
+  fireEvent.click(screen.getByLabelText('I am present for this shift and the exception details are accurate.'));
+  expect(screen.getByRole('button',{name:'Confirm my shift'})).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Why laptop receipt cannot be confirmed'),{target:{value:'Laptop is unavailable'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm my shift'}));
+  await waitFor(()=>expect(api.confirmMyShiftAttendance).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(api.confirmMyShiftAttendance).mock.calls[0][0]).toMatchObject({attendanceOnly:true,assetId:undefined,exceptionReason:'Laptop is unavailable'});
+  cache.clear();
+});

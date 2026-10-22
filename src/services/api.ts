@@ -3,6 +3,7 @@ import { ApiError } from './errors';
 import { login as serverLogin, request } from './http';
 import type { EquipmentContext, EquipmentAllocation, EquipmentOptions } from '../types/equipment';
 import type { LeaveInput, LeaveRequest, RosterBalance, RosterScope, RosterWorkspace } from '../types/roster';
+import type { AttendanceContext, AttendanceDevice, AttendanceSubmission, AttendanceRecord, AttendanceFilters } from '../types/shiftAttendance';
 
 import type { platformApi } from './mock/platformHandlers';
 import type { platformSetupApi } from './mock/platformSetupHandlers';
@@ -19,6 +20,16 @@ import type { profileApi } from './mock/profileHandlers';
 
 // Type-only legacy contracts keep existing pages compiling without loading mock handlers.
 export type Api = typeof platformApi & typeof platformSetupApi & typeof workforceApi & typeof schedulingApi & typeof replacementApi & typeof resourceApi & typeof systemApi & typeof reportApi & typeof placementApi & typeof disciplinaryApi & typeof attendanceApi & typeof profileApi & {
+  listLaptopModels():Promise<string[]>;
+  addLaptopModel(name:string):Promise<string>;
+  updateLaptopModel(assetId:string,input:{model:string;expectedModel:string}):Promise<import('../types/domain').Laptop>;
+  getMyAttendanceContext():Promise<AttendanceContext>;
+  getMyAttendanceDevices(occurrenceId:string):Promise<AttendanceDevice[]>;
+  confirmMyShiftAttendance(input:AttendanceSubmission):Promise<AttendanceRecord>;
+  returnMyShiftDevice(input:{confirmationId:string;expectedRevision:number;notes:string;idempotencyKey:string;physicallyReturned:true}):Promise<AttendanceRecord>;
+  listShiftAttendance(input:AttendanceFilters):Promise<{items:AttendanceRecord[];total:number;page:number;pageSize:number;serverNow:string}>;
+  getShiftAttendanceDetail(id:string):Promise<AttendanceRecord>;
+  reviewShiftAttendance(id:string,input:{expectedRevision:number;status:'CONFIRMED'|'VOIDED';reason:string}):Promise<AttendanceRecord>;
   getRosterWorkspace(scope:RosterScope):Promise<RosterWorkspace>;
   completeOffDayPlan(month:string):Promise<RosterBalance>;
   submitLeaveRequest(input:LeaveInput):Promise<LeaveRequest>;
@@ -42,7 +53,7 @@ export type Api = typeof platformApi & typeof platformSetupApi & typeof workforc
   getSharedDevices():Promise<{poolId:string;date:string;shift:import('../types/domain').ShiftCode;assets:{assetId:string;model:string;currentUserName:string|null}[]}>;
   receiveSharedDevice(assetId:string):Promise<import('../types/domain').Handover>;
   returnSharedDevice():Promise<import('../types/domain').Handover>;
-  registerPlatformDevice(input:{poolId:string;assetId:string;serial:string;model:string}):Promise<import('../types/domain').Laptop>;
+  registerPlatformDevice(input:{poolId:string;workstationId?:string;assetId:string;serial:string;model:string}):Promise<import('../types/domain').Laptop>;
   getEquipmentAllocations(input:EquipmentContext):Promise<EquipmentOptions>;
   reserveEquipment(input:EquipmentContext & {assetId:string;workerId:string}):Promise<EquipmentAllocation>;
   cancelEquipmentAllocation(id:string,reason:string):Promise<EquipmentAllocation>;

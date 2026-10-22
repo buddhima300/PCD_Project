@@ -14,6 +14,9 @@ import { employeeCareerMethods, employeeCareerOperation } from './employee-caree
 import { loadLoginAccounts, loginAccessMetadata, setEmployeeLoginAccess } from './employee-access.js';
 import { employeeReleaseMethods, employeeReleaseOperation } from './employee-release.js';
 import { rosterMethods, rosterOperation, projectRosterProfile } from './roster.js';
+import { shiftAttendanceMethods, shiftAttendanceOperation } from './attendance-confirmations.js';
+import { projectShiftAttendanceProfile } from './attendance-profile.js';
+import { dashboardAnalytics } from './dashboard-analytics.js';
 
 const blocked = new Set(['login', 'getMockConfig', 'setMockConfig', '__proto__', 'constructor', 'prototype']);
 const staff = new Set(['getEmployee','getFreelancer','getProfile','saveProfilePhoto','getMyWork','getOffDayCalendar','requestOffDay','cancelOffDay','setAvailability','listMyAssignments','getReplacement','getMyHandovers','confirmOutgoing','confirmReceipt','createIncident','listNotifications','markNotificationRead','markAllNotificationsRead','listMyDisciplinaryCases','listMyWarnings','saveMyIrDraft','submitMyIr','acknowledgeWarning','submitAppeal','getMyAttendance','submitHandover']);
@@ -38,6 +41,12 @@ export async function executeOperation(db, auth, group, method, args) {
     for (const person of [...state.employees,...state.freelancers]) {
       const account=loginByWorker.get(person.id);
       if (account) person.accountStatus=account.status;
+    }
+    if(group==='workflows'&&shiftAttendanceMethods.has(method)) {
+      const previous=structuredClone(state);
+      const result=await shiftAttendanceOperation(client,{...auth,workerId},state,method,translate(args,inward));
+      await saveState(client,state,previous);
+      return translate(result,outward);
     }
     const allocations = (await loadAllocations(client)).filter(a => a.state !== 'RESERVED');
     if (group === 'workflows' && rosterMethods.has(method)) {
@@ -75,7 +84,7 @@ export async function executeOperation(db, auth, group, method, args) {
     }
     if (group === 'workflows' && employeeReleaseMethods.has(method)) {
       const previous=structuredClone(state);
-      const result=await employeeReleaseOperation(client,auth,state,method,translate(args,inward));
+      const result=await employeeReleaseOperation(client,{...auth,workerId},state,method,translate(args,inward));
       if (method !== 'getEmployeeReleaseInfo') await saveState(client,state,previous);
       return translate(result,outward);
     }
@@ -127,6 +136,9 @@ export async function executeOperation(db, auth, group, method, args) {
     // Apply operational status filters after the database allocation summary is calculated.
     const statusFilter = method === 'listPlatforms' ? args[0]?.opStatus : null;
     if (statusFilter) args = [{...args[0],opStatus:undefined},...args.slice(1)];
+    const directoryScope=['listEmployees','listFreelancers'].includes(method)?args[0]?.attendance:undefined;
+    const directoryPage=directoryScope?{page:args[0]?.page??1,pageSize:args[0]?.pageSize??25}:null;
+    if(directoryScope){if(auth.user.role!=='SUPERVISOR')throw new ApiError(403,'FORBIDDEN','Supervisor access is required.');args=[{...args[0],attendance:undefined,page:1,pageSize:100000}];}
     const engine = await createDomain();
     const target = group === 'breaks' ? engine.breaks : engine.methods;
     if (!Object.hasOwn(target, method) || typeof target[method] !== 'function') throw new ApiError(404, 'NOT_FOUND', 'Operation not found.');
@@ -165,7 +177,10 @@ export async function executeOperation(db, auth, group, method, args) {
     await syncReceipts(client,updated,allocations);
     await saveState(client, updated, state);
     if (group === 'workflows' && platformCommands.has(method)) await projectPlatforms(client, updated, state);
-    const equipmentState={...updated,handovers:updated.handovers.filter(h => h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason))};
+    const hasAttendance=(await client.query("SELECT to_regclass('attendance_confirmations') AS name")).rows[0].name;
+    const custodyEvidence=hasAttendance?(await client.query(`SELECT s.asset_id,o.roster_date::text AS date,o.shift FROM equipment_custody_sessions s
+      JOIN attendance_confirmations c ON c.id=s.confirmation_id JOIN work_occurrences o ON o.id=c.occurrence_id WHERE s.released_at IS NULL`)).rows:[];
+    const equipmentState={...updated,shiftCustody:custodyEvidence,handovers:updated.handovers.filter(h => h.receivedAt && (h.outgoingConfirmedAt || h.selfConfirmationReason))};
     result = withoutPendingHandovers(enrichEquipment(result ?? null,equipmentState,allocations,method === 'getDashboard' ? args[0] ?? {} : {}));
     if (method === 'getEmployee' && result?.employee) {
       const employee = updated.employees.find(e => e.id === result.employee.id);
@@ -179,7 +194,17 @@ export async function executeOperation(db, auth, group, method, args) {
       employee.loginAccess=loginAccessMetadata(loginByWorker.get(employee.id),auth);
     }
     if (statusFilter && Array.isArray(result)) result = result.filter(p => p.opStatus === statusFilter);
-    if (group === 'workflows' && method === 'getProfile') result = projectRosterProfile(state,result,translate(args[0],inward),args[2]);
+    if(directoryScope){
+      const summaries=await shiftAttendanceOperation(client,{...auth,workerId},state,'getDirectoryAttendance',[{date:directoryScope.date,shift:directoryScope.shift??'',workerIds:result.items.map(p=>p.id)}]);
+      let items=result.items.map(p=>({...p,attendance:summaries[p.id]}));
+      if(directoryScope.status)items=items.filter(p=>p.attendance.status===directoryScope.status);
+      result={...result,total:items.length,page:directoryPage.page,pageSize:directoryPage.pageSize,items:items.slice((directoryPage.page-1)*directoryPage.pageSize,directoryPage.page*directoryPage.pageSize)};
+    }
+    if (group === 'workflows' && method === 'getProfile') {
+      result = projectRosterProfile(state,result,translate(args[0],inward),args[2]);
+      result = await projectShiftAttendanceProfile(client,result,translate(args[0],inward),args[1],args[2]);
+    }
+    if (method === 'getDashboard') result.analytics=await dashboardAnalytics(client,updated);
     return translate(result, outward);
   });
 }

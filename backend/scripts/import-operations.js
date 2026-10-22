@@ -16,7 +16,9 @@ export async function importOperations(db, { reset = false, backup = true, nodeE
     const initialized = (await client.query("SELECT 1 FROM ops_state WHERE key='initialized'")).rows.length;
     if (initialized && !reset) throw new Error('Operational data already imported. Use --reset only to deliberately replace it.');
     const hasEquipment = (await client.query("SELECT to_regclass('equipment_allocations') AS table_name")).rows[0].table_name;
-    const tables = [...(hasEquipment ? ['equipment_allocations'] : []), ...Object.values(collections).map(name => `ops_${name}`), 'ops_state', 'operational_accounts', ...legacyTables];
+    const hasAttendance=(await client.query("SELECT to_regclass('attendance_confirmations') AS name")).rows[0].name;
+    const attendanceTables=hasAttendance?['attendance_commands','attendance_corrections','attendance_handover_events','equipment_custody_sessions','attendance_confirmations','work_occurrences']:[];
+    const tables = [...attendanceTables,...(hasEquipment ? ['equipment_allocations'] : []), ...Object.values(collections).map(name => `ops_${name}`), 'ops_state', 'operational_accounts', ...legacyTables];
     let backupPath;
     if (backup) {
       const saved = { createdAt: new Date().toISOString(), tables: {} };
