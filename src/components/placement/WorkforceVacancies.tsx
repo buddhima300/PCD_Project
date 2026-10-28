@@ -1,3 +1,4 @@
+import { ReportDownload } from '../reports/ReportDownload';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
@@ -18,7 +19,7 @@ export function WorkforceVacancies({onSelect,mode='production'}:{onSelect:(selec
   const [search,setSearch]=useState('');const [dept,setDept]=useState<DeptCode|''>('');
   const q=useQuery({queryKey:['workforce-vacancies'],queryFn:()=>api.getWorkforceVacancies(),refetchInterval:30000});
   return <section className="space-y-4" aria-label={mode==='training'?'Training vacancies':'Production platform vacancies'}>
-    <div className="flex flex-wrap items-center gap-3"><SearchInput value={search} onChange={setSearch} placeholder="Search platform or category"/><Select aria-label="Vacancy department" value={dept} onChange={e=>setDept(e.target.value as DeptCode|'')} placeholder="All departments" options={Object.entries(deptNames).map(([value,label])=>({value,label}))}/></div>
+    <div className="flex justify-end"><ReportDownload report="platform-vacancies" filters={{dept,search}}/></div><div className="flex flex-wrap items-center gap-3"><SearchInput value={search} onChange={setSearch} placeholder="Search platform or category"/><Select aria-label="Vacancy department" value={dept} onChange={e=>setDept(e.target.value as DeptCode|'')} placeholder="All departments" options={Object.entries(deptNames).map(([value,label])=>({value,label}))}/></div>
     <p className="text-xs text-ink-muted">Seats are shared by trainees and production staff within each shift. {mode==='production'?'A qualified trainee can keep their current seat even when the shift is full.':'Choose available seats to assign a candidate to training.'}</p>
     <QueryView query={q} isEmpty={rows=>!rows.length}>{rows=>{
       const visible=rows.filter(p=>(!dept||p.departments.some(d=>d.dept===dept))&&`${p.code} ${p.name} ${p.categoryCode}`.toLowerCase().includes(search.toLowerCase()));

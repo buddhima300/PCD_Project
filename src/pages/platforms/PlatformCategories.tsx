@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ export function PlatformCategories() {
   return (
     <div>
       <PageHeader title="Platform categories" description="Organize platforms into categories and create new operational platforms." actions={<PlatformSetupActions />} />
+      <div className="mb-4 flex justify-end"><ReportDownload report="platform-categories" filters={{search,status}}/></div>
       <Card>
         <div className="flex flex-wrap gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search categories" className="w-64" />

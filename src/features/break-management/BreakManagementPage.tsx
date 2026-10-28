@@ -1,6 +1,7 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
@@ -8,7 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { useSessionStore } from '../../hooks/useSessionStore';
 import { breakApi } from './api';
 import { breakConfig } from './config';
-import { defaultFilters, type BreakSession, type BreakRequest, type BreakFilters as Filters, type BreakExport } from './contracts';
+import { defaultFilters, type BreakSession, type BreakRequest, type BreakFilters as Filters } from './contracts';
 import { useBreakSnapshot, useBreakMonitor, useBreakConnection } from './hooks';
 import { BreakAllowance, BreakAudit, BreakHistory, BreakNotice, BreakStatus, BreakTimer } from './components';
 import { WorkflowDialog, type Workflow } from './WorkflowDialog';
@@ -32,6 +33,7 @@ export function BreakManagementPage() {
   if ((supervisor && !s.capabilities.monitor) || (isPolicy && !s.capabilities.policy) || (isReports && !s.capabilities.monitor)) return <BreakNotice error>Your current verified capabilities do not permit this page.</BreakNotice>;
   return <div className="space-y-5">
     <PageHeader title={isPolicy ? 'Break Policy' : isReports ? 'Break History & Reports' : 'Break Management'} description={supervisor ? 'Operational visibility with individual actions limited to the returned authorization scope.' : 'Manage your breaks within the scheduled shift allowance.'} actions={<Button variant="secondary" loading={snapshot.isFetching || monitor.isFetching} disabled={!online} onClick={() => { snapshot.refetch(); if (s.capabilities.monitor && !isPolicy) monitor.refetch(); }}>Refresh</Button>} />
+    {supervisor&&!isPolicy&&<ReportDownload report="break-summary" choices={['break-summary','break-history','break-exceeded']} filters={{platform:filters.platform,department:filters.department,shift:filters.shift,status:filters.status,search:filters.search,from:filters.shiftDate,to:filters.shiftDate,eventDate:filters.date,approval:filters.approval,pending:filters.pending,overrun:filters.overrun,review:filters.review,unreviewed:filters.unreviewed,assignment:filters.assignment}}/>}
     {breakConfig.adapter === 'mock' && <BreakNotice>Development simulation · No production break records, emails, or disciplinary cases are created. Demo fixture shifts are explicitly assigned to Morning.</BreakNotice>}
     {!online && <BreakNotice error>Offline. Displaying last confirmed data. Start, end, and review actions are disabled; no operations are queued.</BreakNotice>}
     {feedback && <BreakNotice error={feedback.error}>{feedback.message}</BreakNotice>}
@@ -44,7 +46,7 @@ export function BreakManagementPage() {
         <BreakFilters filters={filters} onChange={setFilters} departments={monitor.data?.departments ?? []} platforms={monitor.data?.platforms ?? []} />
         <Card className="space-y-4 p-5"><h2 className="font-semibold">{isReports ? 'Filtered break history' : 'Operational sessions'}</h2>{monitor.isPending ? <p role="status">Loading sessions…</p> : <BreakHistory sessions={monitor.data?.sessions ?? []} timezone={s.timezone} onView={setDetail} />}<div className="flex items-center justify-between gap-3"><Button variant="secondary" disabled={filters.page === 1 || monitor.isFetching} onClick={() => setFilters({ ...filters, page: filters.page - 1 })}>Previous</Button><p className="text-sm">Page {filters.page} · {monitor.data?.total ?? 0} matching sessions</p><Button variant="secondary" disabled={!monitor.data || filters.page * filters.pageSize >= Math.max(monitor.data.total, isReports ? 0 : monitor.data.requestTotal) || monitor.isFetching} onClick={() => setFilters({ ...filters, page: filters.page + 1 })}>Next</Button></div></Card>
         {!isReports && <Card className="space-y-3 p-5"><h2 className="font-semibold">Extra-break approval queue</h2><Requests requests={monitor.data?.requests ?? []} disabled={disabled || monitor.isFetching} onAction={setWorkflow} timezone={s.timezone} /></Card>}
-        {isReports && <Exports key={JSON.stringify(filters)} filters={filters} allowed={s.capabilities.export && !disabled} />}
+        {isReports && <p className="text-xs text-ink-muted">Use Download report above for PDF, Excel or CSV. Choose an employee and month in <Link className="text-primary underline" to="/reports?report=break-history">Insights &amp; tools reports</Link> for individual monthly history.</p>}
       </>}
     </> : <>
       <Card className="space-y-4 p-5"><h2 className="font-semibold">Your scheduled shift</h2>{s.shift ? <><p className="text-sm">{s.shift.code} · Scheduled shift date {s.shift.date} · {s.shift.department} / {s.shift.platform}</p><p className="text-xs text-ink-muted">{businessTime(s.shift.startsAt, s.timezone)} → {businessTime(s.shift.endsAt, s.timezone)}</p></> : <BreakNotice>No scheduled shift assignment available.</BreakNotice>}<BreakAllowance snapshot={s} />{s.active && <BreakTimer session={s.active} snapshot={s} />}{s.actions.restriction && <BreakNotice>{s.actions.restriction}</BreakNotice>}<div className="flex flex-wrap gap-2">{s.active ? <Button disabled={disabled || !s.actions.end} onClick={() => setWorkflow({ kind: 'end', session: s.active ?? undefined })}>End Break</Button> : <Button disabled={disabled || !s.actions.start} onClick={() => setWorkflow({ kind: 'start' })}>Start Break</Button>}{s.actions.request && <Button variant="secondary" disabled={disabled} onClick={() => setWorkflow({ kind: 'request' })}>Request Extra Break</Button>}</div></Card>
@@ -64,14 +66,3 @@ function SessionDetails({ id, timezone, disabled, onClose, onAction }: { id: str
   const user = useSessionStore(s => s.user); const query = useQuery({ queryKey: ['breaks', user?.id, 'session', id], queryFn: () => breakApi.session(id), retry: false, refetchInterval: 30000 }); const s = query.isError ? undefined : query.data;
   return <Dialog open onClose={onClose} title="Break session details" size="lg"><div className="space-y-3">{query.isError && <BreakNotice error>{normalizeBreakError(query.error).message}</BreakNotice>}{!s && !query.isError && <p role="status">Loading session details…</p>}{s && <><p>{s.workerName} · {s.workerId} · Scheduled shift date {s.shiftDate}</p><BreakStatus status={s.status} /><p className="text-sm">Started {businessTime(s.startedAt, timezone)}<br />Ended {s.endedAt ? businessTime(s.endedAt, timezone) : 'Not closed'}</p>{s.review && <BreakNotice>{s.review.outcome} · {s.review.reason} · {s.review.actor} · {businessTime(s.review.at, timezone)}</BreakNotice>}{s.escalation.message && <BreakNotice>{s.escalation.message}</BreakNotice>}{s.escalation.caseId && <Link to="/disciplinary" className="text-primary underline">Open existing disciplinary module · {s.escalation.caseId}</Link>}<div className="flex gap-2">{s.actions.correct && <Button disabled={disabled || query.isFetching} onClick={() => onAction({ kind: 'correct', session: s })}>Correct timer</Button>}{s.actions.review && <Button disabled={disabled || query.isFetching} onClick={() => onAction({ kind: 'review', session: s })}>Review overrun</Button>}</div><h3 className="font-semibold">Original events and correction history</h3><BreakAudit events={s.events} timezone={timezone} /></>}</div></Dialog>;
 }
-function Exports({ filters, allowed }: { filters: Filters; allowed: boolean }) {
-  const [job, setJob] = useState<BreakExport>(); const [error, setError] = useState('');
-  const mutation = useMutation({ mutationFn: (format: 'CSV' | 'XLSX') => breakApi.export(filters, format, crypto.randomUUID()), retry: false, onSuccess: setJob, onError: e => setError(normalizeBreakError(e).message) });
-  const user = useSessionStore(s => s.user);
-  const status = useQuery({ queryKey: ['breaks', user?.id, 'export', job?.id], queryFn: () => breakApi.exportStatus(job?.id ?? ''), enabled: allowed && !!job && ['Queued', 'Processing'].includes(job.status), refetchInterval: q => ['Ready', 'Failed'].includes(q.state.data?.status ?? '') ? false : 2000, retry: false });
-  const result = status.data ?? job;
-  const safeUrl = result?.downloadUrl && (/^https:\/\//.test(result.downloadUrl) || (breakConfig.adapter === 'mock' && (result.downloadUrl.startsWith('data:text/csv') || result.downloadUrl.startsWith('data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'))));
-  return <Card className="space-y-3 p-5"><h2 className="font-semibold">Authorized exports</h2><p className="text-sm text-ink-muted">Export the current filters and assignment context through the selected adapter.</p><div className="flex gap-2">{(['CSV', 'XLSX'] as const).map(format => <Button key={format} disabled={!allowed || mutation.isPending} onClick={() => { setJob(undefined); setError(''); mutation.mutate(format); }}>Request {format}</Button>)}</div>{!allowed && <BreakNotice>Explicit export permission and fresh online data are required.</BreakNotice>}{error && <BreakNotice error>{error}</BreakNotice>}{status.isError && <BreakNotice error>{normalizeBreakError(status.error).message}</BreakNotice>}{allowed && !status.isError && result && <BreakNotice error={result.status === 'Failed'}>{result.status} · {result.progress}% · {result.message}{result.status === 'Ready' && safeUrl && <a className="ml-3 text-primary underline" href={result.downloadUrl ?? ''} download={`break-history.${result.format.toLowerCase()}`} rel="noopener noreferrer">Download {result.format}</a>}</BreakNotice>}</Card>;
-}
-
-

@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -55,6 +56,7 @@ export function PlatformConfig() {
 
   return (
     <div>
+      <div className="mb-4 flex justify-end"><ReportDownload report="platform-configuration" filters={{platform:selected}}/></div>
       <PageHeader title="Platform configuration" description="Department workstation capacity per platform. New platforms use the setup panel for seats, shift staffing targets and activation." actions={selected && <PlatformSetupActions platformCode={selected} compact />} />
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <Card className="h-fit">

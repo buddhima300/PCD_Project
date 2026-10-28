@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -36,6 +37,7 @@ export function PlatformCapacity() {
           </Link>
         }
       />
+      <div className="mb-4 flex justify-end"><ReportDownload report="platform-configuration" filters={{...scope,shift:mode==='live'?'':mode}} label="Download capacity"/></div>
       <Card>
         <div className="flex flex-col gap-3 border-b border-line p-3 md:flex-row md:items-center md:justify-between">
           <ScopeFilters value={scope} onChange={setScope} show={['category']} />

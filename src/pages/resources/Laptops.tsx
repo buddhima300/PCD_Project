@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -30,6 +31,7 @@ export function Laptops({ embedded = false }: { embedded?: boolean }) {
 
   return <div className={compact ? 'equipment-inventory equipment-compact' : 'equipment-inventory'}>
     {embedded ? <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-base font-semibold">Asset inventory</h2><p className="mt-1 text-xs text-ink-muted">Workstations follow saved platform seating. Select a row for device details and activity.</p></div><span className="text-xs text-ink-muted">{q.data ? `${q.data.total} matching workstations` : 'Loading workstations…'}</span></div> : <PageHeader title="Asset inventory" description="Workstations and shared devices for every configured platform seat." />}
+    <div className="mb-4 flex justify-end"><ReportDownload report="equipment-inventory" filters={{...scope,search}}/></div>
     <Card>
       <div className="flex flex-wrap gap-2 border-b border-line p-3">
         <SearchInput value={search} onChange={value => { setSearch(value); setPage(1); }} placeholder="Workstation, laptop model or user" className="w-72" />

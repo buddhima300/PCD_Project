@@ -17,6 +17,7 @@ import { rosterMethods, rosterOperation, projectRosterProfile } from './roster.j
 import { shiftAttendanceMethods, shiftAttendanceOperation } from './attendance-confirmations.js';
 import { projectShiftAttendanceProfile } from './attendance-profile.js';
 import { dashboardAnalytics } from './dashboard-analytics.js';
+import { databaseReports, databaseReport } from './reports.js';
 
 const blocked = new Set(['login', 'getMockConfig', 'setMockConfig', '__proto__', 'constructor', 'prototype']);
 const staff = new Set(['getEmployee','getFreelancer','getProfile','saveProfilePhoto','getMyWork','getOffDayCalendar','requestOffDay','cancelOffDay','setAvailability','listMyAssignments','getReplacement','getMyHandovers','confirmOutgoing','confirmReceipt','createIncident','listNotifications','markNotificationRead','markAllNotificationsRead','listMyDisciplinaryCases','listMyWarnings','saveMyIrDraft','submitMyIr','acknowledgeWarning','submitAppeal','getMyAttendance','submitHandover']);
@@ -26,6 +27,7 @@ grants.correctAttendanceHandover = 'attendance.correct';
 export async function executeOperation(db, auth, group, method, args) {
   if (group === 'workflows') assertWorkflowAvailable(method,args);
   if (blocked.has(method)) throw new ApiError(404, 'NOT_FOUND', 'Operation not found.');
+  if (method==='getReport'&&auth.user.role!=='SUPERVISOR')throw new ApiError(403,'FORBIDDEN','Supervisor access is required.');
   if (platformCommands.has(method) && auth.user.role !== 'SUPERVISOR') throw new ApiError(403, 'FORBIDDEN', 'Only supervisors can manage platforms.');
   if (group === 'workflows') args = validatePlatformArguments(method, args);
   return transaction(db, async client => {
@@ -41,6 +43,9 @@ export async function executeOperation(db, auth, group, method, args) {
     for (const person of [...state.employees,...state.freelancers]) {
       const account=loginByWorker.get(person.id);
       if (account) person.accountStatus=account.status;
+    }
+    if(group==='workflows'&&method==='getReport'&&databaseReports.has(args[0])) {
+      return databaseReport(client,auth,state,args[0],translate(args[1]??{},inward));
     }
     if(group==='workflows'&&shiftAttendanceMethods.has(method)) {
       const previous=structuredClone(state);

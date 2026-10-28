@@ -24,6 +24,7 @@ import { OffDayBalance } from '../../components/offday/OffDayBalance';
 import { EmployeeCareerSummary } from '../../components/placement/EmployeeCareer';
 import { EmployeeLoginToggle } from '../../components/placement/EmployeeLoginToggle';
 import { fmtDate } from '../../utils/format';
+import { ReportDownload } from '../../components/reports/ReportDownload';
 
 const PAGE_SIZE = 100;
 const COLS = 'grid-cols-[110px_minmax(160px,1.4fr)_90px_60px_minmax(150px,1.2fr)_96px_90px_210px_90px_190px]';
@@ -67,6 +68,7 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
     <div className={embedded ? 'mt-5' : undefined}>
       {embedded ? <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-base font-semibold">Employee directory</h2><p className="mt-1 text-xs text-ink-muted">Search staff and inspect assignments without leaving the directory.</p></div><span className="text-xs text-ink-muted">{q.data ? `${q.data.total} matching employees` : 'Loading staff…'}</span></div> : <PageHeader title="Employee directory" description="Search, filter and inspect workforce records. Rows are virtualised for large result sets." actions={<Link to="/register"><Button icon={<UserPlusIcon className="h-4 w-4" />}>Register staff</Button></Link>} />}
       <Card>
+        <div className="flex justify-end p-3"><ReportDownload report="employee-directory" filters={{...scope,search,status,attendance}}/></div>
         <DirectoryAttendanceFilters value={attendance} onChange={v=>{setAttendance(v);setPage(1);}}/>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={update(setSearch)} placeholder="Search ID, name, email" className="w-64" />
@@ -135,6 +137,7 @@ export function Employees({ embedded = false }: { embedded?: boolean }) {
         {q.data && <Pagination page={page} pageSize={PAGE_SIZE} total={q.data.total} onPage={setPage} />}
       </Card>
       <Dialog open={!!selectedId} onClose={() => setSelectedId(null)} placement="right" title={detail.data?.employee.name ?? selectedId ?? 'Employee details'} description={selectedId ?? undefined} footer={selectedId && <Link to={`/employees/${selectedId}`} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white">Open full record</Link>}>
+        {selectedId&&<div className="mb-4"><ReportDownload report="employee-detail" filters={{employeeId:selectedId}} label="Download employee"/></div>}
         {detail.isPending ? <LoadingBlock rows={5} /> : detail.isError ? <ErrorState error={detail.error} onRetry={() => detail.refetch()} /> : detail.data && <>
           <div className="mb-5 flex gap-2"><StatusBadge status={detail.data.employee.status} /><StatusBadge status={detail.data.employee.accountStatus} /></div>
           <OffDayBalance detail={detail.data} /><EmployeeCareerSummary employee={detail.data.employee} /><EmployeePlatformAction key={detail.data.employee.id} employee={detail.data.employee} /><h3 className="mb-3 text-sm font-semibold">Operational assignment</h3><dl className="space-y-3 text-sm">{[

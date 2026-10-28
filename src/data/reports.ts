@@ -1,4 +1,5 @@
 export type ReportKey =
+'platform-vacancies' | 'employee-directory' | 'employee-detail' | 'attendance-confirmations' | 'break-summary' | 'break-history' | 'break-exceeded' | 'replacement-summary' | 'platform-categories' | 'platform-configuration' | 'platform-operations' | 'equipment-inventory' |
 'workforce-summary' |
 'platform-workforce' |
 'platform-capacity' |
@@ -22,11 +23,23 @@ export type ReportKey =
 export interface ReportDefinition {
   key: ReportKey;
   title: string;
-  group: 'Workforce' | 'Scheduling' | 'Replacements' | 'Workstations' | 'Governance';
+  group: 'Workforce' | 'Scheduling' | 'Replacements' | 'Workstations' | 'Governance' | 'Breaks' | 'Platforms';
   description: string;
 }
 
 export const reportDefinitions: ReportDefinition[] = [
+{ key: 'platform-vacancies', title: 'Platform vacancies & capacities', group: 'Platforms', description: 'Available shift seats with production staff, trainees and configured capacity.' },
+{ key: 'employee-directory', title: 'Employee directory', group: 'Workforce', description: 'Complete employee details across all matching database records.' },
+{ key: 'employee-detail', title: 'Individual employee', group: 'Workforce', description: 'Select a staff number for personal details, assignment and career history.' },
+{ key: 'attendance-confirmations', title: 'Attendance confirmations', group: 'Scheduling', description: 'Submitted attendance declarations and device custody for the selected roster dates.' },
+{ key: 'break-summary', title: 'Break history summary', group: 'Breaks', description: 'Break time and allowance per employee shift, including approved extra time.' },
+{ key: 'break-history', title: 'Individual monthly break history', group: 'Breaks', description: 'Select an employee and month, or export all matching break sessions.' },
+{ key: 'break-exceeded', title: 'Employees exceeding breaks', group: 'Breaks', description: 'Employee shifts exceeding their allowance; this does not establish a reviewed violation.' },
+{ key: 'replacement-summary', title: 'Employee replacement summary', group: 'Replacements', description: 'Replacement records, employee names and outcome totals.' },
+{ key: 'platform-categories', title: 'Platform categories', group: 'Platforms', description: 'Category details, platform totals and configured seats.' },
+{ key: 'platform-configuration', title: 'Platform configurations', group: 'Platforms', description: 'Saved capacity, staffing targets, lifecycle and status by department and shift.' },
+{ key: 'platform-operations', title: 'Platform operations', group: 'Platforms', description: 'Production staffing, training, vacant seats, devices held and open incidents.' },
+{ key: 'equipment-inventory', title: 'Equipment inventory summary', group: 'Workstations', description: 'Every matching device with inventory totals by platform, department, condition and status.' },
 { key: 'workforce-summary', title: 'Workforce summary', group: 'Workforce', description: 'Permanent and freelance headcount by category and status.' },
 { key: 'platform-workforce', title: 'Platform workforce', group: 'Workforce', description: 'Assigned vs required workforce per platform and shift.' },
 { key: 'department-workforce', title: 'Department workforce', group: 'Workforce', description: 'Headcount and freelancer bench per department.' },

@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -35,6 +36,7 @@ export function ReplacementCenter() {
 
   return (
     <div>
+      <div className="mb-4 flex justify-end"><ReportDownload report="replacement-summary" filters={{...scope,status,type,from:date,to:date,search:employee,freelancer}}/></div>
       <PageHeader
         title="Replacement Center"
         description="Absences resolved by department-restricted, platform-aware freelancer selection in manager-defined priority order."

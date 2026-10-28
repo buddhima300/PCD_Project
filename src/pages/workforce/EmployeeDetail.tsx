@@ -11,6 +11,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Tabs } from '../../components/ui/Tabs';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
 import { api } from '../../services/api';
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import { deptNames, fmtDate, fmtDateTime } from '../../utils/format';
 
 import { EmployeePlatformAction } from '../../components/placement/EmployeePlatformAction';
@@ -32,6 +33,7 @@ export function EmployeeDetail() {
       <PageHeader
         breadcrumbs={[{ label: 'Employees', to: '/employees' }, { label: e.id }]}
         title={e.name}
+        actions={<ReportDownload report="employee-detail" filters={{employeeId:id}}/>}
         meta={<><StatusBadge status={e.status} /><StatusBadge status={e.accountStatus} /></>}
         description={`${e.id} · ${e.position} · joined ${fmtDate(e.joinedAt)}`} />
       

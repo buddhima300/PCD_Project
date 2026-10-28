@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ export function PlatformOperations({ embedded = false }: { embedded?: boolean })
   return <div className={compact ? 'workspace-compact' : undefined}>
     {!embedded && <PageHeader title="Platform operations" description="Inspect platform coverage, staffing gaps and operational issues." actions={<PlatformSetupActions compact />} />}
     {embedded && <div className="mb-3 flex justify-end"><PlatformSetupActions compact /></div>}
+    <div className="mb-4 flex justify-end"><ReportDownload report="platform-operations" filters={{...scope,shift:mode==='live'?'':mode}}/></div>
     <WorkspaceSummary label="Filtered platform summary" items={[
       { label: 'Matching platforms', value: rows?.length },
       { label: 'Configured seats', value: rows?.reduce((sum, platform) => sum + platform.totalWorkstations, 0) },

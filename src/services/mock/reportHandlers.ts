@@ -10,15 +10,35 @@ export interface ReportFilters {
   category?: string;
   platform?: string;
   dept?: DeptCode | '';
-  shift?: ShiftCode | '';
+  shift?: string;
   from?: string;
   to?: string;
+  month?: string;
+  employeeId?: string;
+  workerId?: string;
+  department?: string;
+  search?: string;
+  status?: string;
+  workerType?: string;
+  attendance?: {date:string;shift:string;status:string};
+  overrun?: string;
+  review?: string;
+  assignment?: 'historical' | 'current';
+  unreviewed?: boolean;
+  type?: string;
+  freelancer?: string;
+  eventDate?: string;
+  approval?: string;
+  pending?: boolean;
 }
 
 export interface ReportResult {
   columns: string[];
   rows: Array<Array<string | number>>;
   generatedAt: string;
+  filters?: ReportFilters;
+  summary?: {label:string;value:string|number}[];
+  sections?: {title:string;columns:string[];rows:Array<Array<string|number>>}[];
 }
 
 type Row = Array<string | number>;
@@ -30,6 +50,10 @@ function build(key: ReportKey, f: ReportFilters): {columns: string[];rows: Row[]
   const inRange = (date: string) => (!f.from || date >= f.from) && (!f.to || date <= f.to);
   const emps = db.employees.filter((e) => inCat(e.platformCode) && inDept(e.dept) && inShift(e.shift));
   switch (key) {
+    case 'platform-vacancies': case 'employee-directory': case 'employee-detail': case 'attendance-confirmations':
+    case 'break-summary': case 'break-history': case 'break-exceeded': case 'replacement-summary':
+    case 'platform-categories': case 'platform-configuration': case 'platform-operations': case 'equipment-inventory':
+      throw new Error('This report requires the database reporting API.');
     case 'workforce-summary':
       return {
         columns: ['Category', 'Permanent', 'Active', 'On leave', 'Locked accounts'],
@@ -181,6 +205,6 @@ export const reportApi = {
   respond(() => {
     const a = requireRole('SUPERVISOR');
     if (key === 'audit-activity' && a.role !== 'SUPERVISOR') requireRole('SUPERVISOR');
-    return { ...build(key, f), generatedAt: `${TODAY}T18:52:00` };
+    return { ...build(key, f), filters:f, generatedAt: new Date().toISOString() };
   })
 };

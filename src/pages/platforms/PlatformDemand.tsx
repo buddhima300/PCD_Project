@@ -1,3 +1,4 @@
+import { ReportDownload } from '../../components/reports/ReportDownload';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -51,6 +52,7 @@ export function PlatformDemand() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end"><ReportDownload report="platform-vacancies" filters={{dept,category}}/></div>
       <PageHeader
         title="Platform workforce demand & capacity"
         description="Live calculation of genuine platform workforce vacancies across departments and categories. Reflects immediate capacity reservations when trainees are placed."
