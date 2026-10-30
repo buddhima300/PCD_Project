@@ -1,5 +1,6 @@
 // Preserve the original screen contracts while executing every workflow on the backend.
 import { ApiError } from './errors';
+import type { IncrementEmployee, IncrementScope, IncrementExamInput } from '../types/incrementExams';
 import { login as serverLogin, request } from './http';
 import type { EquipmentContext, EquipmentAllocation, EquipmentOptions } from '../types/equipment';
 import type { LeaveInput, LeaveRequest, RosterBalance, RosterScope, RosterWorkspace } from '../types/roster';
@@ -20,6 +21,17 @@ import type { profileApi } from './mock/profileHandlers';
 
 // Type-only legacy contracts keep existing pages compiling without loading mock handlers.
 export type Api = typeof platformApi & typeof platformSetupApi & typeof workforceApi & typeof schedulingApi & typeof replacementApi & typeof resourceApi & typeof systemApi & typeof reportApi & typeof placementApi & typeof disciplinaryApi & typeof attendanceApi & typeof profileApi & {
+  getMySeatVacancies(month:string):Promise<import('../types/seatRequests').SeatVacancyOverview>;
+  requestVacancySeat(replacementId:string,input:{note:string}):Promise<import('../types/seatRequests').SeatRequest>;
+  withdrawSeatRequest(id:string,version:number):Promise<import('../types/seatRequests').SeatRequest>;
+  listSeatRequests(replacementId?:string):Promise<import('../types/seatRequests').SeatRequest[]>;
+  decideSeatRequest(id:string,input:{decision:'ALLOCATE'|'REJECT';version:number}):Promise<import('../types/seatRequests').SeatRequest>;
+  getMyPlatformOverview():Promise<import('../types/myPlatform').MyPlatformOverview>;
+  getIncrementProgress(employeeId?:string):Promise<IncrementEmployee>;
+  listIncrementEligibility(scope:IncrementScope):Promise<{items:IncrementEmployee[];total:number;page:number;pageSize:number;eligible:number;scheduled:number;serverNow:string}>;
+  setIncrementOpeningBalance(employeeId:string,input:{throughDate:string;creditedDays:number;reason:string;expectedRevision:number}):Promise<IncrementEmployee>;
+  scheduleIncrementExam(employeeId:string,input:IncrementExamInput):Promise<IncrementEmployee>;
+  cancelIncrementExam(employeeId:string,input:{expectedRevision:number;reason:string;idempotencyKey:string}):Promise<IncrementEmployee>;
   listLaptopModels():Promise<string[]>;
   addLaptopModel(name:string):Promise<string>;
   updateLaptopModel(assetId:string,input:{model:string;expectedModel:string}):Promise<import('../types/domain').Laptop>;

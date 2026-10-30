@@ -13,14 +13,14 @@ import type { NotificationItem } from '../../types/domain';
 import { cn } from '../../utils/cn';
 import { fmtDateTime, relative } from '../../utils/format';
 
-const TYPES = ['OFFDAY_APPROVED', 'OFFDAY_REJECTED', 'OFFDAY_OVERRIDE', 'SHIFT_CHANGED', 'ROTATION', 'REPLACEMENT_ASSIGNED', 'EMERGENCY_REPLACEMENT', 'PLATFORM_ASSIGNMENT', 'WORKSTATION_ASSIGNED', 'LAPTOP_INCIDENT', 'DISCIPLINARY_CASE', 'BREAK_EVENT', 'ROSTER_UPDATED', 'PLATFORM_CONFIG_CHANGED'];
+const TYPES = ['INCREMENT_EXAM', 'OFFDAY_APPROVED', 'OFFDAY_REJECTED', 'OFFDAY_OVERRIDE', 'SHIFT_CHANGED', 'ROTATION', 'REPLACEMENT_ASSIGNED', 'EMERGENCY_REPLACEMENT', 'PLATFORM_ASSIGNMENT', 'WORKSTATION_ASSIGNED', 'LAPTOP_INCIDENT', 'DISCIPLINARY_CASE', 'BREAK_EVENT', 'ROSTER_UPDATED', 'PLATFORM_CONFIG_CHANGED'];
 
 export function Notifications() {
   const qc = useQueryClient();
   const [type, setType] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [sel, setSel] = useState<NotificationItem | null>(null);
-  const q = useQuery({ queryKey: ['notifications', type, unreadOnly], queryFn: () => api.listNotifications({ type, unreadOnly }) });
+  const q = useQuery({ queryKey: ['notifications', type, unreadOnly], queryFn: () => api.listNotifications({ type, unreadOnly }), refetchInterval:2000 });
   const inv = () => qc.invalidateQueries({ queryKey: ['notifications'] });
   const mark = useMutation({ mutationFn: (v: {id: string;read: boolean;}) => api.markNotificationRead(v.id, v.read), onSuccess: inv });
   const all = useMutation({ mutationFn: () => api.markAllNotificationsRead(), onSuccess: inv });

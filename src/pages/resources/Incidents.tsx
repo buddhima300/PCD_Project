@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/Button';
@@ -37,7 +36,7 @@ export function Incidents() {
 
   return (
     <div>
-      <PageHeader title="Laptop incidents" description="Equipment incidents reported by staff and supervisors. High and critical incidents block the laptop from use." actions={<Link to="/report-issue"><Button size="sm">Report issue</Button></Link>} />
+      <PageHeader title="Laptop incidents" description="Equipment incidents reported by staff and supervisors. High and critical incidents block the laptop from use." />
       <Card>
         <div className="flex flex-wrap gap-2 border-b border-line p-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Incident, laptop, title" className="w-56" />

@@ -6,11 +6,11 @@ The report workspace includes platform vacancies and capacities, employee direct
 
 Downloads request fresh database results using the current filters and include all matching records, independently of the screen's pagination. Individual employee downloads are available in the directory's employee details panel and on the full employee page. For an individual monthly break report, select **Individual monthly break history**, enter the employee's staff number and select a month.
 
-PDFs use navy section headers, summary tables, bordered records, generation time, filter context and numbered pages. Wide datasets are split into column groups with the identifying column repeated. Excel includes separate summary and additional-detail sheets; CSV appends these sections after the detailed records.
+PDFs use the supplied Port City Digital logo and its orange palette for section headers, table shading, borders and footer accents, alongside summary tables, generation time, filter context and numbered pages. Wide datasets are split into column groups with the identifying column repeated. Excel includes separate summary and additional-detail sheets; CSV appends these sections after the detailed records.
 
 Dates in attendance filters refer to the roster's start date, including overnight shifts. Evidence timestamps in exported records are labelled UTC. Report generation time is displayed in Asia/Colombo. Only submitted attendance confirmations are reported; non-submission does not establish absence or completed work hours.
 
-Break summaries total sessions within each employee shift, use the policy effective at shift start and include approved extra minutes. Exceeding an allowance is reported separately from any human review outcome. Break reports retain the existing `reports.export` permission requirement.
+Break summaries total sessions within each employee shift, use the policy effective at shift start and include approved extra minutes. Exceeding an allowance is reported separately from any human review outcome. All supervisors can download break reports without an additional export permission. Employee and freelancer roles cannot download supervisor reports.
 
 The new backend reports execute through the existing authenticated `getReport` workflow, loading operational database records and directly querying attendance confirmation and custody tables. No new database migration or data import is required; attendance reporting needs the existing `009_attendance_confirmations.sql` migration.
 

@@ -11,6 +11,7 @@ import { CapacityMeter } from '../../components/ui/CapacityMeter';
 import { Dialog } from '../../components/ui/Dialog';
 import { Field, Textarea } from '../../components/ui/Field';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { SeatRequests } from '../../components/replacement/SeatRequests';
 import { ErrorState, LoadingBlock } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { DeptTag, IdText, ShiftTag } from '../../components/ui/Tags';
@@ -65,6 +66,7 @@ export function ReplacementDetail() {
         } />
       
 
+      {isOps && <SeatRequests replacementId={id}/>}
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="space-y-4">
           {r.status === 'FAILED' &&

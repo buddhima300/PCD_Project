@@ -1,36 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { MonitorIcon } from 'lucide-react';
+import { MonitorIcon, RefreshCwIcon, CoffeeIcon, CalendarDaysIcon, UsersIcon } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
-import { CapacityMeter } from '../../components/ui/CapacityMeter';
+import { Button } from '../../components/ui/Button';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, QueryView } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { api } from '../../services/api';
-import { TODAY } from '../../utils/clock';
 import { deptNames } from '../../utils/format';
+import { businessTime, addCalendarDays } from '../../utils/shiftTime';
 
+const label=(value:string|null)=>value?value.toLowerCase().replace(/_/g,' ').replace(/^./,c=>c.toUpperCase()):'Not set';
 export function MyPlatform() {
-  const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork() });
-  return (
-    <QueryView query={q}>
-      {(w) => {
-        const p = w.platform;
-        if (!p) return <div><PageHeader title="My platform" /><Card><EmptyState icon={MonitorIcon} title="No platform assignment" description="Your platform will appear here after your supervisor assigns training, production work or replacement coverage." /></Card></div>;
-        return (
-          <div>
-            <PageHeader title={`My platform · ${p.code}`} meta={<StatusBadge status={p.opStatus} />} description={`Category ${p.categoryCode} · You work in ${w.person.dept} (${deptNames[w.person.dept]})`} />
-            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {p.occupancy.map((o) =>
-              <Card key={o.dept} className={o.dept === w.person.dept ? 'p-4 ring-2 ring-primary/30' : 'p-4'}>
-                  <p className="mb-2 text-sm font-semibold">{o.dept} · {deptNames[o.dept]}</p>
-                  <CapacityMeter used={o.occupiedNow} capacity={o.capacity} />
-                </Card>
-              )}
-            </div>
-          </div>);
-
-      }}
-    </QueryView>);
-
+  const [department,setDepartment]=useState('');
+  const q=useQuery({queryKey:['my-platform-overview'],queryFn:()=>api.getMyPlatformOverview(),refetchInterval:15000,refetchOnWindowFocus:true});
+  return <QueryView query={q} retainOnError>{w=>{
+    const p=w.platform,a=w.assignment;
+    if(!p||!a)return <div><PageHeader title="My platform"/><Card><EmptyState icon={MonitorIcon} title="No current platform assignment" description="Your training, production or current replacement platform will appear here once assigned. After training, your supervisor must confirm your production placement."/></Card></div>;
+    const team=w.team.filter(t=>!department||t.dept===department);
+    return <div className="space-y-5">
+      <PageHeader title="My platform" description="Your workplace, colleagues and live shift activity." actions={<Button variant="secondary" size="sm" disabled={q.isFetching} onClick={()=>void q.refetch()} icon={<RefreshCwIcon className="h-4 w-4"/>}>Refresh</Button>}/>
+      <Card className="p-5 sm:p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{label(a.kind)}</span><StatusBadge status={p.status}/><span className="text-xs text-ink-muted">{label(p.lifecycle)}</span></div><h2 className="text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-ink-muted">{p.code} · {p.category}</p>{p.description&&<p className="mt-2 text-sm text-ink-muted">{p.description}</p>}</div><div className="rounded-xl bg-mist p-3 text-sm"><p className="font-semibold">Your assignment</p><p className="mt-1">{deptNames[a.dept]} · {label(a.shift)} shift</p></div></div>
+        {a.training&&<div className="mt-5 border-t border-line pt-4"><div className="mb-2 flex flex-wrap justify-between gap-2 text-sm"><strong>Trainee · platform training</strong><span>{a.training.completed} / {a.training.required} training days completed</span></div><progress className="h-2 w-full accent-primary" aria-label="Training days completed" value={a.training.completed} max={Math.max(1,a.training.required)}/><p className="mt-2 text-xs text-ink-muted">Started {a.training.start||'Not recorded'} · Expected completion {a.training.end||'Not recorded'}</p></div>}
+        <p className="mt-4 text-xs text-ink-muted">Live {label(w.live.shift)} shift · roster date {w.live.date} · Updated {businessTime(w.serverNow)} (Asia/Colombo). Refreshes every 15 seconds.</p>
+      </Card>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{w.departments.map(d=><Card key={d.dept} className={`p-4 ${d.dept===a.dept?'ring-2 ring-primary/25':''}`}><h3 className="text-sm font-semibold">{d.dept} · {deptNames[d.dept]}</h3><p className="mt-3 text-2xl font-semibold tabular-nums">{d.scheduled}<span className="ml-2 text-xs font-normal text-ink-muted">scheduled now / {d.target} target</span></p><p className="mt-2 text-xs text-ink-muted">{d.confirmed} confirmed · {d.trainees} trainees assigned</p><p className="mt-3 border-t border-line pt-3 text-xs text-ink-muted">{d.capacity} workstations · {d.devices} devices<br/>{d.held} held · {d.unavailable} unavailable</p></Card>)}</div>
+      <div className="grid gap-5 xl:grid-cols-3">
+        <Card className="p-5"><h2 className="flex items-center gap-2 font-semibold"><CoffeeIcon className="h-4 w-4"/>Break activity <span className="ml-auto text-sm text-ink-muted">{w.breaks.filter(b=>b.active).length} on break</span></h2><p className="mt-1 text-xs text-ink-muted">Recorded this shift · Asia/Colombo time</p>{!w.breaks.length?<EmptyState title="No breaks recorded"/>:<ul className="mt-4 max-h-96 space-y-3 overflow-y-auto">{w.breaks.map(b=><li key={b.id} className="rounded-xl bg-mist p-3"><div className="flex justify-between gap-3 text-sm"><strong>{b.name}</strong><span className={b.active?'font-semibold text-primary':'text-ink-muted'}>{b.active?'On break':'Ended'}</span></div><p className="mt-1 text-xs text-ink-muted">{b.dept} · {businessTime(b.startedAt)}{b.endedAt?` – ${businessTime(b.endedAt)}`:''} · {Math.floor(b.seconds/60)} min</p></li>)}</ul>}</Card>
+        <Card className="p-5 xl:col-span-2"><h2 className="flex items-center gap-2 font-semibold"><CalendarDaysIcon className="h-4 w-4"/>Platform off-days</h2><p className="mt-1 text-xs text-ink-muted">Approved off-days for the next 7 calendar days, across both shifts.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{Array.from({length:7},(_,i)=>addCalendarDays(w.today,i)).map(date=>{const entries=w.offDays.filter(o=>o.date===date);return <div key={date} className={`min-h-28 rounded-xl border p-3 ${date===w.today?'border-primary/40 bg-primary/5':'border-line'}`}><h3 className="text-xs font-semibold">{date===w.today?'Today · ':''}{date.slice(5)}</h3>{entries.length?entries.map(o=><div key={o.id} className="mt-2 text-sm"><p className="font-medium">{o.name}</p><p className="text-xs text-ink-muted">{o.dept} · {label(o.shift)}</p></div>):<p className="mt-3 text-xs text-ink-muted">No approved off-days</p>}</div>;})}</div></Card>
+      </div>
+      <Card className="overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 p-5"><div><h2 className="flex items-center gap-2 font-semibold"><UsersIcon className="h-4 w-4"/>Platform colleagues</h2><p className="mt-1 text-xs text-ink-muted">Missing attendance is shown as not submitted.</p></div><label className="text-xs text-ink-muted">Department<select className="ml-2 rounded-lg border border-line bg-surface p-2 text-sm text-ink" value={department} onChange={e=>setDepartment(e.target.value)}><option value="">All departments</option>{w.departments.map(d=><option key={d.dept} value={d.dept}>{d.dept}</option>)}</select></label></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-mist text-xs text-ink-muted"><tr>{['Colleague','Department','Assignment','Shift','Current status'].map(t=><th key={t} className="px-5 py-3 font-medium">{t}</th>)}</tr></thead><tbody>{team.map(t=><tr key={t.id} className="border-t border-line"><td className="px-5 py-3 font-medium">{t.name}{t.self&&<span className="ml-2 text-xs text-primary">You</span>}</td><td className="px-5 py-3">{t.dept}</td><td className="px-5 py-3">{label(t.kind)}</td><td className="px-5 py-3">{label(t.shift)}</td><td className="px-5 py-3">{t.status}</td></tr>)}</tbody></table>{!team.length&&<EmptyState title="No colleagues in this department"/>}</div></Card>
+    </div>;
+  }}</QueryView>;
 }

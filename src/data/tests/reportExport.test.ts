@@ -2,6 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { read, utils } from 'xlsx';
 import { exportReport } from '../../utils/reportExport';
 import type { ReportResult } from '../../services/api';
+import { readFile } from 'node:fs/promises';
 
 const capture=vi.hoisted(()=>({pdf:new ArrayBuffer(0)}));
 vi.mock('jspdf',async importOriginal=>{
@@ -12,7 +13,7 @@ vi.mock('jspdf',async importOriginal=>{
     return doc;
   }};
 });
-afterEach(()=>vi.restoreAllMocks());
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 const report:ReportResult={columns:['Staff','Name','Hours'],rows:[['EMP-1','=Unsafe formula',8]],generatedAt:'2026-10-23T03:00:00Z',filters:{from:'2026-10-01',to:'2026-10-23'},summary:[{label:'Employees',value:1}],sections:[{title:'Inventory summary',columns:['Condition','Count'],rows:[['GOOD',1]]}]};
 
 test('Excel workbook has complete records, typed numbers, literal strings and summary sheets',async()=>{
@@ -29,11 +30,14 @@ test('Excel workbook has complete records, typed numbers, literal strings and su
 });
 
 test('PDF is a real paginated document with reference-style sections, filters and totals',async()=>{
+  const logo=await readFile('public/images/port-city-digital-logo.png');
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,arrayBuffer:async()=>new Uint8Array(logo).buffer}));
   await exportReport('employee-directory',{...report,columns:Array.from({length:15},(_,i)=>`Column ${i}`),rows:Array.from({length:100},(_,i)=>Array.from({length:15},(_,j)=>`Record ${i} value ${j}`))},'PDF');
   const pdf=new TextDecoder().decode(capture.pdf);
   expect(pdf.startsWith('%PDF-')).toBe(true);
   expect(pdf).toContain('PERFORMANCE SUMMARY');expect(pdf).toContain('DETAILED RECORDS');expect(pdf).toContain('PART 3 OF 3');expect(pdf).toContain('Page 1 of');expect(pdf).toContain('from: 2026-10-01');
   expect((pdf.match(/\/Type \/Page\b/g)??[]).length).toBeGreaterThan(3);
+  expect(pdf).toContain('/Subtype /Image');expect(pdf).toContain('PORT CITY DIGITAL');
 });
 
 test('CSV escapes spreadsheet formulas, quotes and line breaks and includes summaries',async()=>{

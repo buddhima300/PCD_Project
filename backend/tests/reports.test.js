@@ -8,7 +8,7 @@ import { executeOperation } from '../src/modules/operations/service.js';
 import { importOperations } from '../scripts/import-operations.js';
 import { loadState, saveState } from '../src/modules/operations/store.js';
 
-const admin={user:{role:'SUPERVISOR'},permissions:['reports.export']};
+const admin={user:{role:'SUPERVISOR'},permissions:[]};
 function fixture(){return {
   categories:[{code:'CAT',name:'Category',status:'ACTIVE'}],
   platforms:[{code:'P1',name:'Platform one',categoryCode:'CAT',departments:{DP:3},status:'ACTIVE',lifecycle:'OPERATIONAL'}],
@@ -37,7 +37,7 @@ test('report scopes, totals, employee details and cumulative break excess',async
   await assert.rejects(report('employee-directory',{from:'2026-10-03',to:'2026-10-01'}),e=>e.code==='VALIDATION');
   await assert.rejects(report('employee-directory',{from:'2026-02-30'}),e=>e.code==='VALIDATION');
   await assert.rejects(databaseReport(null,{user:{role:'EMPLOYEE'},permissions:[]},state,'employee-directory'),e=>e.status===403);
-  await assert.rejects(databaseReport(null,{...admin,permissions:[]},state,'break-summary'),e=>e.status===403);
+  for(const role of ['EMPLOYEE','FREELANCER'])await assert.rejects(databaseReport(null,{user:{role},permissions:[]},state,'break-summary'),e=>e.status===403);
 });
 
 test('report operation reads saved database records and complete results, including attendance schema',async()=>{
@@ -48,7 +48,7 @@ test('report operation reads saved database records and complete results, includ
     await db.query('INSERT INTO users(id,email,name,role,password_hash) VALUES($1,$2,$3,$4,$5)',[user.id,user.email,user.name,user.role,'unused']);
     await importOperations(db,{backup:false,nodeEnv:'test'});
     const state=await loadState(db),previous=structuredClone(state);state.employees[0].name='Database report employee';await saveState(db,state,previous);
-    const auth={user,permissions:['reports.export']};const call=(key,f={})=>executeOperation(db,auth,'workflows','getReport',[key,f]);
+    const auth={user,permissions:[]};const call=(key,f={})=>executeOperation(db,auth,'workflows','getReport',[key,f]);
     const directory=await call('employee-directory');assert.equal(directory.rows.length,state.employees.length);assert.ok(directory.rows.some(r=>r[1]==='Database report employee'));
     for(const key of ['platform-vacancies','platform-categories','platform-configuration','platform-operations','equipment-inventory','replacement-summary','break-summary','break-history','break-exceeded','attendance-confirmations']){
       const result=await call(key);assert.ok(Array.isArray(result.rows),key);assert.ok(result.columns.length>0,key);assert.ok(result.generatedAt.endsWith('Z'),key);

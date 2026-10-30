@@ -2,7 +2,7 @@ import {
   ActivityIcon, ArrowLeftRightIcon, BarChart3Icon, BellIcon, BriefcaseIcon, Building2Icon, CalendarCheckIcon, CalendarDaysIcon,
   CalendarOffIcon, ClipboardListIcon, Clock3Icon, GaugeIcon, GraduationCapIcon, LaptopIcon, LayersIcon, LayoutDashboardIcon,
   RefreshCwIcon, RepeatIcon, ScrollTextIcon, ServerIcon, SettingsIcon, ShieldAlertIcon, SlidersHorizontalIcon, SparklesIcon, UserCheckIcon,
-  UserCircleIcon, UserPlusIcon, UserRoundCogIcon, UsersIcon, TriangleAlertIcon, type LucideIcon } from
+  UserCircleIcon, UserPlusIcon, UserRoundCogIcon, UsersIcon, type LucideIcon } from
 'lucide-react';
 import type { Role } from '../types/domain';
 import { supervisorAreas } from './supervisorNavigation';
@@ -45,26 +45,21 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
   { label: 'Settings', to: '/settings', icon: SettingsIcon, group: 'System' }],
 
   EMPLOYEE: [
-  { label: 'Break Management', to: '/my/breaks', icon: Clock3Icon },
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon },
-  { label: 'My Platform', to: '/my/platform', icon: ServerIcon },
-  { label: 'My Schedule', to: '/my/schedule', icon: CalendarDaysIcon },
-  { label: 'My Off-days', to: '/my/off-days', icon: CalendarOffIcon },
-  { label: 'My Workstation', to: '/my/workstation', icon: LaptopIcon },
-  { label: 'Report Issue', to: '/report-issue', icon: TriangleAlertIcon },
-  { label: 'My IRs & Warning Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
+  { label: 'My platform', to: '/my/platform', icon: ServerIcon },
+  { label: 'My schedule', to: '/my/schedule', icon: CalendarDaysIcon },
+  { label: 'Break Management', to: '/my/breaks', icon: Clock3Icon },
+  { label: 'Workstation', to: '/my/workstation', icon: LaptopIcon },
+  { label: 'IR and WARNING Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
   { label: 'Notifications', to: '/notifications', icon: BellIcon },
   { label: 'Profile', to: '/profile', icon: UserCircleIcon }],
 
   FREELANCER: [
-  { label: 'Break Management', to: '/my/breaks', icon: Clock3Icon },
   { label: 'Dashboard', to: '/', icon: LayoutDashboardIcon },
   { label: 'Availability', to: '/my/availability', icon: CalendarCheckIcon },
   { label: 'Assignments', to: '/my/assignments', icon: ClipboardListIcon },
-  { label: 'My Platform', to: '/my/platform', icon: ServerIcon },
-  { label: 'My Workstation', to: '/my/workstation', icon: LaptopIcon },
-  { label: 'Report Issue', to: '/report-issue', icon: TriangleAlertIcon },
-  { label: 'My IRs & Warning Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
+  { label: 'Break Management', to: '/my/breaks', icon: Clock3Icon },
+  { label: 'IR and WARNING Letters', to: '/my/disciplinary', icon: ShieldAlertIcon },
   { label: 'Notifications', to: '/notifications', icon: BellIcon },
   { label: 'Profile', to: '/profile', icon: UserCircleIcon }]
 
@@ -72,8 +67,8 @@ export const legacyNavByRole: Record<Role, NavItem[]> = {
 
 export const mobilePrimary: Record<Role, string[]> = {
   SUPERVISOR: ['/', '/workforce', '/platforms', '/equipment'],
-  EMPLOYEE: ['/', '/my/schedule', '/my/off-days', '/my/platform'],
-  FREELANCER: ['/', '/my/availability', '/my/assignments', '/my/platform']
+  EMPLOYEE: ['/', '/my/platform', '/my/schedule', '/my/breaks'],
+  FREELANCER: ['/', '/my/availability', '/my/assignments', '/my/breaks']
 };
 
 export const roleLabels: Record<Role, string> = {

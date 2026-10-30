@@ -18,6 +18,10 @@ import { shiftAttendanceMethods, shiftAttendanceOperation } from './attendance-c
 import { projectShiftAttendanceProfile } from './attendance-profile.js';
 import { dashboardAnalytics } from './dashboard-analytics.js';
 import { databaseReports, databaseReport } from './reports.js';
+import { incrementExamMethods, incrementExamOperation } from './increment-exams.js';
+import { notificationFeed } from './notification-feed.js';
+import { myPlatformOverview } from './my-platform.js';
+import { seatRequestMethods, seatRequestOperation } from './seat-requests.js';
 
 const blocked = new Set(['login', 'getMockConfig', 'setMockConfig', '__proto__', 'constructor', 'prototype']);
 const staff = new Set(['getEmployee','getFreelancer','getProfile','saveProfilePhoto','getMyWork','getOffDayCalendar','requestOffDay','cancelOffDay','setAvailability','listMyAssignments','getReplacement','getMyHandovers','confirmOutgoing','confirmReceipt','createIncident','listNotifications','markNotificationRead','markAllNotificationsRead','listMyDisciplinaryCases','listMyWarnings','saveMyIrDraft','submitMyIr','acknowledgeWarning','submitAppeal','getMyAttendance','submitHandover']);
@@ -30,6 +34,7 @@ export async function executeOperation(db, auth, group, method, args) {
   if (method==='getReport'&&auth.user.role!=='SUPERVISOR')throw new ApiError(403,'FORBIDDEN','Supervisor access is required.');
   if (platformCommands.has(method) && auth.user.role !== 'SUPERVISOR') throw new ApiError(403, 'FORBIDDEN', 'Only supervisors can manage platforms.');
   if (group === 'workflows') args = validatePlatformArguments(method, args);
+  if(group==='workflows'&&method==='listNotifications')return notificationFeed(db,auth,args);
   return transaction(db, async client => {
     // Domain rules affect several modules. Serialize each complete load/validate/save cycle.
     await client.query('SELECT pg_advisory_xact_lock(726343)');
@@ -43,6 +48,19 @@ export async function executeOperation(db, auth, group, method, args) {
     for (const person of [...state.employees,...state.freelancers]) {
       const account=loginByWorker.get(person.id);
       if (account) person.accountStatus=account.status;
+    }
+    if(group==='workflows'&&method==='getMyPlatformOverview')return translate(await myPlatformOverview(client,state,{...auth,workerId},args),outward);
+    if(group==='workflows'&&seatRequestMethods.has(method)){
+      const previous=structuredClone(state);
+      const result=await seatRequestOperation(state,{...auth,workerId},method,translate(args,inward));
+      if(!['getMySeatVacancies','listSeatRequests'].includes(method))await saveState(client,state,previous);
+      return translate(result,outward);
+    }
+    if(group==='workflows'&&incrementExamMethods.has(method)) {
+      const previous=structuredClone(state);
+      const result=await incrementExamOperation(client,{...auth,workerId},state,method,translate(args,inward));
+      await saveState(client,state,previous);
+      return translate(result,outward);
     }
     if(group==='workflows'&&method==='getReport'&&databaseReports.has(args[0])) {
       return databaseReport(client,auth,state,args[0],translate(args[1]??{},inward));
@@ -148,7 +166,7 @@ export async function executeOperation(db, auth, group, method, args) {
     const target = group === 'breaks' ? engine.breaks : engine.methods;
     if (!Object.hasOwn(target, method) || typeof target[method] !== 'function') throw new ApiError(404, 'NOT_FOUND', 'Operation not found.');
     if (group !== 'breaks' && auth.user.role !== 'SUPERVISOR' && !staff.has(method)) throw new ApiError(403, 'FORBIDDEN', 'Supervisor access is required.');
-    const required = group === 'breaks' ? ({ policy: 'breaks.policy', decide: 'breaks.review', review: 'breaks.review', correct: 'attendance.correct' }[args[0]?.kind] ?? (['export','exportStatus'].includes(method) ? 'reports.export' : null)) : grants[method];
+    const required = group === 'breaks' ? ({ policy: 'breaks.policy', decide: 'breaks.review', review: 'breaks.review', correct: 'attendance.correct' }[args[0]?.kind] ?? null) : grants[method];
     if (required && !auth.permissions.includes(required)) throw new ApiError(403, 'FORBIDDEN', 'The required action permission is missing.');
     const supervisors = (await client.query("SELECT u.id,u.name,u.email,u.title,u.role,a.worker_id FROM users u JOIN operational_accounts a ON a.user_id=u.id WHERE u.role='SUPERVISOR' AND u.status='ACTIVE'")).rows.map(user => ({ ...user, id: user.worker_id }));
     const hydrated = structuredClone(state);

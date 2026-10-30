@@ -1,4 +1,4 @@
-import { ActivityIcon, BarChart3Icon, CalendarDaysIcon, LaptopIcon, LayoutDashboardIcon, UsersIcon, ServerIcon } from 'lucide-react';
+import { ActivityIcon, BarChart3Icon, CalendarDaysIcon, LaptopIcon, LayoutDashboardIcon, UsersIcon, ServerIcon, UserCircleIcon } from 'lucide-react';
 import { legacyNavByRole, type NavItem } from './navigation';
 import type { BreakSnapshot } from '../features/break-management/contracts';
 import type { Role } from '../types/domain';
@@ -15,7 +15,8 @@ export const supervisorAreas: SupervisorArea[] = [
   { id: 'workforce', label: 'Workforce', to: '/workforce', icon: UsersIcon, description: 'Register staff, manage training, assign qualified people, and manage daily workforce needs.', routes: ['/workforce', '/register', '/candidates', '/training', '/workforce/assignments', '/placement-queue', '/employees', '/freelancers', '/breaks', '/breaks/reports', '/breaks/policy', '/disciplinary', '/off-days', '/replacements', '/scheduling', '/roster', '/shifts', '/rotation'] },
   { id: 'platforms', label: 'Platforms', to: '/platforms', icon: ServerIcon, description: 'Create platforms and manage categories, configuration and device capacity.', routes: ['/platforms', '/categories', '/platform-config', '/capacity', '/platform-demand', '/departments', '/positions', '/operations', '/supervisor-operations'] },
   { id: 'equipment', label: 'Equipment', to: '/equipment', icon: LaptopIcon, description: 'Manage workstations and shared devices for configured platform seats.', routes: ['/laptops'] },
-  { id: 'insights', label: 'Insights & Tools', to: '/insights', icon: BarChart3Icon, description: 'Review reports, audit activity and notifications, or open system settings.', routes: ['/reports', '/audit', '/notifications', '/settings', '/profile'] },
+  { id: 'insights', label: 'Insights & Tools', to: '/insights', icon: BarChart3Icon, description: 'Review reports, audit activity and notifications, or open system settings.', routes: ['/reports', '/audit', '/notifications', '/settings'] },
+  { id: 'profile', label: 'Profile', to: '/profile', icon: UserCircleIcon, description: 'View your registration details and manage your account password.', routes: ['/profile'] },
 ];
 
 export function matchesDestination(pathname: string, to: string) {

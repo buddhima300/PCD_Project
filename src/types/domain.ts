@@ -405,6 +405,7 @@ export interface Incident {
 }
 
 export type NotificationType =
+'INCREMENT_EXAM' |
 'CAREER_PROMOTION' |
 'OFFDAY_APPROVED' |
 'OFFDAY_REJECTED' |

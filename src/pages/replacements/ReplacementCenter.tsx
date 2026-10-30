@@ -1,4 +1,5 @@
 import { ReportDownload } from '../../components/reports/ReportDownload';
+import { SeatRequests } from '../../components/replacement/SeatRequests';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -50,6 +51,7 @@ export function ReplacementCenter() {
         <KpiTile label="Assigned / confirmed" value={c?.assigned ?? '—'} icon={CheckCheckIcon} tone="success" />
         <KpiTile label="Failed" value={c?.failed ?? '—'} icon={XOctagonIcon} tone="danger" emphasis />
       </div>
+      <SeatRequests />
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <SearchInput value={employee} onChange={setEmployee} placeholder="Absent employee" className="w-44" />

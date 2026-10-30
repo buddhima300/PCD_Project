@@ -69,10 +69,11 @@ describe('development adapter behavior', () => {
     setApiAuth({ userId: 'FL-00124', role: 'FREELANCER', name: 'Sofia Reyes' }); await expect(mockBreakApi.request(r.id)).rejects.toMatchObject({ status: 403 });
     employee(); breakScenarios.now! += 31 * 60000; expect((await mockBreakApi.snapshot()).requests[0].status).toBe('Expired');
   });
-  it('separates monitoring visibility from actions and policy/export permission', async () => {
-    supervisor('read-only-demo'); const s = await mockBreakApi.snapshot(); expect(s.capabilities.monitor).toBe(true); expect(s.capabilities.policy).toBe(false); expect(s.capabilities.export).toBe(false);
+  it('allows every supervisor to export while retaining action and policy restrictions', async () => {
+    supervisor('read-only-demo'); const s = await mockBreakApi.snapshot(); expect(s.capabilities.monitor).toBe(true); expect(s.capabilities.policy).toBe(false); expect(s.capabilities.export).toBe(true);
     const m = await mockBreakApi.monitor(defaultFilters); expect(m.sessions[0].actions.review).toBe(false);
-    await expect(mockBreakApi.export(defaultFilters, 'CSV', 'x')).rejects.toMatchObject({ status: 403 });
+    expect((await mockBreakApi.export(defaultFilters, 'CSV', 'x')).status).toBe('Ready');
+    employee(); await expect(mockBreakApi.export(defaultFilters, 'CSV', 'employee-export')).rejects.toMatchObject({ status: 403 });
   });
   it('preserves original events on correction and rejects stale revisions', async () => {
     const a = await start(); breakScenarios.now! += 10 * 60000; supervisor(); await execute({ kind: 'correct', id: a.id, version: a.version, endedAt: new Date(breakScenarios.now! - 60000).toISOString(), reason: 'Forgot to stop timer' });

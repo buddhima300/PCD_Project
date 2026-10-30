@@ -24,8 +24,8 @@ const db = { query: (sql, values) => engine.query(sql, values), connect: async (
 } };
 const paths = {
   SUPERVISOR: ['/', '/workforce', '/register', '/candidates', '/training', '/workforce/assignments', '/employees', '/freelancers', '/roster', '/shifts', '/rotation', '/off-days', '/replacements', '/disciplinary', '/breaks', '/breaks/reports', '/breaks/policy', '/platforms', '/categories', '/platform-config', '/capacity', '/platform-demand', '/departments', '/operations', '/equipment', '/pools', '/laptops', '/incidents', '/insights', '/reports', '/audit', '/settings', '/notifications', '/profile', '/account-admin'],
-  EMPLOYEE: ['/', '/my/platform', '/my/schedule', '/my/off-days', '/my/workstation', '/report-issue', '/my/disciplinary', '/my/breaks', '/notifications', '/profile'],
-  FREELANCER: ['/', '/my/platform', '/my/availability', '/my/assignments', '/my/workstation', '/report-issue', '/my/disciplinary', '/my/breaks', '/notifications', '/profile'],
+  EMPLOYEE: ['/', '/my/platform', '/my/schedule', '/my/breaks', '/my/workstation', '/my/disciplinary', '/notifications', '/profile'],
+  FREELANCER: ['/', '/my/platform', '/my/availability', '/my/assignments', '/my/workstation', '/my/disciplinary', '/my/breaks', '/notifications', '/profile'],
 };
 
 try {

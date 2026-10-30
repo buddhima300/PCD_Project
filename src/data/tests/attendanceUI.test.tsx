@@ -38,6 +38,7 @@ it('shows shared devices without pending receipt or handover actions', async () 
   renderWorker(<MyWorkstation />);
   await screen.findByText('JAX-15 · DP');
   expect(screen.queryByRole('button',{name:'Confirm receipt'})).not.toBeInTheDocument();
-  expect(screen.getByRole('link',{name:'Report an equipment issue'})).toHaveAttribute('href','/report-issue');
+  expect(screen.queryByRole('link',{name:'Report an equipment issue'})).not.toBeInTheDocument();
+  expect(screen.getByText(/Contact your supervisor for equipment support/)).toBeInTheDocument();
   expect(retired).not.toHaveBeenCalled();
 });

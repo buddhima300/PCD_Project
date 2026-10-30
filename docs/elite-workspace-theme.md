@@ -16,11 +16,15 @@ Keyboard focus uses lime outlines. Mobile controls, wrapping banners, reduced mo
 
 Login-specific responsive and interaction checks:
 
+The sculpted login treatment is implemented in `src/login-sculpted-glass.css`. A second glass edge, layered shadows, a reflective front surface and inset fields give the existing wallpaper and form a dimensional composition. `Login` uses the already installed Framer Motion springs for a pointer-driven tilt bounded to 2.4 degrees and a moving light reflection. Tilt resets on pointer leave and form focus, and is disabled for touch/coarse pointers, narrow screens, reduced motion, the help dialog and the existing pause control. No WebGL or new dependencies are required. The wallpaper remains stationary.
+
 ```sh
 node scripts/verify-login-theme.mjs
 ```
 
 ## Login wallpaper
+
+The login also blends the video supplied via [Pinterest pin 1044412969835883841](https://www.pinterest.com/pin/1044412969835883841/) over the wallpaper. Its playable MP4 rendition is stored locally at `public/videos/login-abstract-blue.mp4` (about 5.5 MB), so playback does not require a Pinterest embed or a streaming dependency. `LoginBackgroundVideo` loops it muted and inline, fades it in after playback starts, and uses a screen blend at 32% opacity (24% on mobile). The existing motion control pauses/resumes it, hidden tabs pause it, and reduced-motion visitors do not load it. Playback or network failure leaves the wallpaper visible and the form usable. Source rendition: `https://v1.pinimg.com/videos/mc/720p/00/b7/1a/00b71ac95a485aac1af1fc72f3415c6a.mp4`.
 
 The supervisor dashboard additionally uses the supplied reference image at `public/images/supervisor-glass-reference.png`. Its treatment lives in `src/supervisor-dashboard-glass.css`, scoped to `[data-workspace='dashboard']`. The decorative fixed background is blended at 20% opacity (14% on mobile). Dashboard cards and subcards use translucent indigo/blue fills, reflective gradient edges, backdrop blur and soft shadows; reduced-transparency and unsupported-backdrop fallbacks use opaque surfaces. Other workspaces and the login keep their own backgrounds.
 

@@ -6,9 +6,11 @@ import type { BreakSnapshot } from '../../features/break-management/contracts';
 const snapshot = (monitor = true, policy = true, view = true) => ({ capabilities: { monitor, policy, view, export: false } }) as BreakSnapshot;
 
 describe('supervisor information architecture', () => {
-  it('has five unique primary destinations and preserves both staff navigations', () => {
-    expect(navByRole.SUPERVISOR).toHaveLength(5);
-    expect(new Set(navByRole.SUPERVISOR.map(i => i.to)).size).toBe(5);
+  it('has six unique primary destinations ending with Profile and preserves both staff navigations', () => {
+    expect(navByRole.SUPERVISOR).toHaveLength(6);
+    expect(new Set(navByRole.SUPERVISOR.map(i => i.to)).size).toBe(6);
+    expect(navByRole.SUPERVISOR[5]).toMatchObject({label:'Profile',to:'/profile'});
+    expect(supervisorAreaFor('/profile')?.id).toBe('profile');
     expect(navByRole.EMPLOYEE).toEqual(legacyNavByRole.EMPLOYEE);
     expect(navByRole.FREELANCER).toEqual(legacyNavByRole.FREELANCER);
   });

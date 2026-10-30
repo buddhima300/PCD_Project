@@ -15,7 +15,7 @@ import { deptNames, fmtDate, fmtShiftWindow, relative } from '../../utils/format
 
 export function EmployeeDashboard() {
   const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork(), refetchInterval:15000 });
-  const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}) });
+  const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}), refetchInterval:2000 });
   if (q.isPending) return <Skeleton className="h-96" />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
   const w = q.data;
@@ -100,7 +100,7 @@ export function EmployeeDashboard() {
               )}
               </ul>
             }
-            <Link to="/my/off-days" className="mt-4 block">
+            <Link to="/my/schedule" className="mt-4 block">
               <Button variant="secondary" size="sm" className="w-full">
                 Request off-day
               </Button>

@@ -23,6 +23,7 @@ export const methods = { ...platformApi, ...platformSetupApi, ...workforceApi, .
 export const breaks = mockBreakApi;
 export { setAuthContext };
 export { setOperationalClock } from '../../../../src/utils/clock';
+export { evaluateCandidates as evaluateReplacementCandidates } from '../../../../src/services/mock/rules';
 export function snapshot() {
   const { seq, ...records } = db;
   return { ...records, sequences: exportSequences(), disciplinary: exportDisciplinaryState(), breaks: exportBreakState(), profile: JSON.parse(localStorage.getItem('relay-profile-v1') ?? '{"photos":{},"events":[]}') };

@@ -1,12 +1,13 @@
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState, type PointerEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { ArrowRightIcon, BriefcaseIcon, ShieldCheckIcon, UserRoundCogIcon, LockIcon, MailIcon, EyeIcon, EyeOffIcon, HelpCircleIcon, PauseIcon, PlayIcon, TriangleAlertIcon, SparklesIcon } from 'lucide-react';
 import { BrandLogo } from '../components/layout/BrandLogo';
+import { LoginBackgroundVideo } from '../components/layout/LoginBackgroundVideo';
 import { Dialog } from '../components/ui/Dialog';
 import { useSessionStore } from '../hooks/useSessionStore';
 import { errorMessage } from '../services/api';
@@ -43,6 +44,35 @@ export function Login() {
   const selectedRole: Role = 'SUPERVISOR';
   const [showHelp, setShowHelp] = useState(false);
   const isAnimated = motionEnabled && !reducedMotion;
+  const tiltX = useMotionValue(0);
+  const tiltY = useMotionValue(0);
+  const lightX = useMotionValue(75);
+  const lightY = useMotionValue(8);
+  const spring = { stiffness: 150, damping: 26, mass: 0.6 };
+  const rotateX = useSpring(tiltX, spring);
+  const rotateY = useSpring(tiltY, spring);
+  const reflectionX = useSpring(lightX, spring);
+  const reflectionY = useSpring(lightY, spring);
+  const reflection = useMotionTemplate`radial-gradient(ellipse at ${reflectionX}% ${reflectionY}%, rgba(177, 215, 255, 0.16), transparent 62%)`;
+  const resetGlass = () => { tiltX.set(0); tiltY.set(0); lightX.set(75); lightY.set(8); };
+  useEffect(() => {
+    if (!isAnimated || showHelp) {
+      tiltX.set(0); tiltY.set(0); lightX.set(75); lightY.set(8);
+      // Stop any in-flight spring when motion is explicitly disabled.
+      rotateX.jump(0); rotateY.jump(0); reflectionX.jump(75); reflectionY.jump(8);
+    }
+  }, [isAnimated, showHelp, tiltX, tiltY, lightX, lightY, rotateX, rotateY, reflectionX, reflectionY]);
+  const moveGlass = (event: PointerEvent<HTMLDivElement>) => {
+    if (!isAnimated || showHelp || event.pointerType !== 'mouse' ||
+      !window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches ||
+      event.currentTarget.contains(document.activeElement)) return resetGlass();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+    const y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+    tiltX.set((0.5 - y) * 4.8);
+    tiltY.set((x - 0.5) * 4.8);
+    lightX.set(x * 100); lightY.set(y * 100);
+  };
   const { register, handleSubmit, formState } = useForm<FormValues>({
     resolver: zodResolver(schema), defaultValues: { email: switchingWorker ? '' : savedEmail, password: '' },
   });
@@ -60,6 +90,7 @@ export function Login() {
 
   return <div className="login-page login-experience" data-motion={isAnimated ? 'running' : 'paused'}>
     <div className="login-exposure" aria-hidden="true" />
+    <LoginBackgroundVideo enabled={isAnimated} />
     <div className="login-exposure-shade" aria-hidden="true" />
     <div className="login-light-trace" aria-hidden="true" />
     <header className="login-topbar">
@@ -82,7 +113,12 @@ export function Login() {
         </div>
         <div className="login-human-note"><span className="login-note-icon"><SparklesIcon className="h-4 w-4" /></span><p>Good work starts with people.<br /><span>Let’s make today a little easier.</span></p></div>
       </motion.section>
+      <div className="login-sculpture" onPointerMove={moveGlass} onPointerLeave={resetGlass} onFocusCapture={resetGlass}>
+      <div className="login-ground-shadow" aria-hidden="true" />
+      <motion.div className="login-glass-plane" style={{ rotateX, rotateY }}>
+      <div className="login-glass-backing" aria-hidden="true" />
       <motion.section className="login-signin-card" aria-label="Sign in" initial={isAnimated ? { opacity: 0, y: 20 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: isAnimated ? 0.55 : 0, delay: isAnimated ? 0.12 : 0 }}>
+        <motion.div className="login-card-reflection" style={{ background: reflection }} aria-hidden="true" />
         <div className="login-card-intro"><span className="login-card-kicker">YOUR WORKSPACE AWAITS</span><h1>Welcome Back</h1><p>A little clarity for the day ahead.</p></div>
         <form onSubmit={handleSubmit(values => login.mutate(values))} className="space-y-4" noValidate aria-busy={login.isPending}>
           <div>
@@ -104,6 +140,8 @@ export function Login() {
         </form>
         <p className="login-access-note">Need access? <button type="button" onClick={() => setShowHelp(true)}>We’ll help you get started.</button></p>
       </motion.section>
+      </motion.div>
+      </div>
     </main>
     <footer className="login-footer"><span>People. Coverage. Clarity.</span><span>PortCity Digital · Your connected workspace</span></footer>
     <Dialog open={showHelp} onClose={() => setShowHelp(false)} title="Platform Access & Credentials" description="A little help getting started" footer={<button type="button" className="rounded-lg border border-line px-4 py-2 text-sm" onClick={() => setShowHelp(false)}>Close</button>}>

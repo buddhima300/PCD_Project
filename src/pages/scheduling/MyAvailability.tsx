@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AvailabilityCalendar } from '../../components/freelancer/AvailabilityCalendar';
+import { UpcomingSeats } from '../../components/freelancer/UpcomingSeats';
 import { Card } from '../../components/ui/Card';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { QueryView } from '../../components/ui/States';
@@ -23,14 +24,15 @@ export function MyAvailability() {
   const q = useQuery({ queryKey: ['freelancer', user.id, month], queryFn: () => api.getFreelancer(user.id, month), refetchInterval: 15000 });
   const set = useMutation({
     mutationFn: (v: {date: string;shift: ShiftCode;state: AvailabilityState;}) => api.setAvailability(user.id, v.date, v.shift, v.state),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['freelancer', user.id] }); qc.invalidateQueries({ queryKey: ['roster-workspace'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['freelancer', user.id] }); qc.invalidateQueries({ queryKey: ['roster-workspace'] }); qc.invalidateQueries({queryKey:['my-seat-vacancies']}); },
     onError: (e) => toast.error('Availability not updated', { description: errorMessage(e) })
   });
   return (
     <div className="roster-workspace">
       <p className="roster-eyebrow mb-2">YOUR TIME / YOUR AVAILABILITY</p>
       <PageHeader title="My availability" description="Choose when you can support your team, up to 60 days ahead. Tap a slot to cycle Available → Unavailable → Off. Assigned shifts stay locked until a supervisor releases them." />
-      <Card className="p-4 md:p-5">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <Card className="min-w-0 p-4 md:p-5">
         <QueryView query={q}>
           {(d) =>
           <AvailabilityCalendar
@@ -45,6 +47,8 @@ export function MyAvailability() {
           }
         </QueryView>
       </Card>
+      <aside aria-label="Upcoming seats and vacancy requests"><UpcomingSeats month={month}/></aside>
+      </div>
     </div>);
 
 }

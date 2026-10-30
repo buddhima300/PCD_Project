@@ -18,7 +18,9 @@ export async function importOperations(db, { reset = false, backup = true, nodeE
     const hasEquipment = (await client.query("SELECT to_regclass('equipment_allocations') AS table_name")).rows[0].table_name;
     const hasAttendance=(await client.query("SELECT to_regclass('attendance_confirmations') AS name")).rows[0].name;
     const attendanceTables=hasAttendance?['attendance_commands','attendance_corrections','attendance_handover_events','equipment_custody_sessions','attendance_confirmations','work_occurrences']:[];
-    const tables = [...attendanceTables,...(hasEquipment ? ['equipment_allocations'] : []), ...Object.values(collections).map(name => `ops_${name}`), 'ops_state', 'operational_accounts', ...legacyTables];
+    const hasIncrement=(await client.query("SELECT to_regclass('increment_exam_appointments') AS name")).rows[0].name;
+    const incrementTables=hasIncrement?['increment_exam_commands','increment_exam_events','increment_exam_appointments','increment_opening_balances']:[];
+    const tables = [...incrementTables,...attendanceTables,...(hasEquipment ? ['equipment_allocations'] : []), ...Object.values(collections).map(name => `ops_${name}`), 'ops_state', 'operational_accounts', ...legacyTables];
     let backupPath;
     if (backup) {
       const saved = { createdAt: new Date().toISOString(), tables: {} };

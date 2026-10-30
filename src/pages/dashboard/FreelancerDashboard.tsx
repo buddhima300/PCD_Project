@@ -14,7 +14,7 @@ import { deptNames, fmtDate, fmtShiftWindow, relative } from '../../utils/format
 
 export function FreelancerDashboard() {
   const q = useQuery({ queryKey: ['my-work'], queryFn: () => api.getMyWork(), refetchInterval:15000 });
-  const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}) });
+  const notif = useQuery({ queryKey: ['notifications', 'summary'], queryFn: () => api.listNotifications({}), refetchInterval:2000 });
   if (q.isPending) return <Skeleton className="h-96" />;
   if (q.isError) return <Card><ErrorState error={q.error} onRetry={() => q.refetch()} /></Card>;
   const w = q.data;

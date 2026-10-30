@@ -15,6 +15,7 @@ import { WorkforceDashboardPanels } from './WorkforceDashboardPanels';
 import { PlatformTable } from '../../components/platform/PlatformTable';
 import { supervisorAreas } from '../../data/supervisorNavigation';
 import { RadialProgress } from '../../components/ui/RadialProgress';
+import { IncrementEligibilityPanel } from '../../components/increment/IncrementExams';
 
 export function SupervisorOverview(){
   const user=useSessionStore(s=>s.user);
@@ -32,6 +33,7 @@ export function SupervisorOverview(){
       <QueryView query={q}>{d=><div className="dashboard-hero-metric"><RadialProgress value={d.kpis.activePlatforms} max={d.kpis.totalPlatforms} label="Active platforms" caption="active" tone="lime"/><div><p className="text-sm font-semibold">Platform activity</p><p className="mt-2 text-xs text-ink-muted">{d.kpis.activePlatforms} active of {d.kpis.totalPlatforms} platforms</p><Link to="/platforms" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-primary">View platforms <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden/></Link></div></div>}</QueryView>
     </Card>
     <QueryView query={q}>{d=>d.analytics?<ShiftAnalytics analytics={d.analytics} current={current.shift}/>:<Card className="p-5"><p role="status" className="text-sm text-ink-muted">Shift analytics unavailable. <button className="text-primary underline" onClick={()=>q.refetch()}>Retry</button></p></Card>}</QueryView>
+    <IncrementEligibilityPanel/>
     <QueryView query={q}>{d=>d.analytics?.workforce?<WorkforceDashboardPanels data={d.analytics.workforce} current={current.shift} rosterDate={d.analytics.date}/>:null}</QueryView>
     <section aria-label="Workspace areas" className="dashboard-areas">{supervisorAreas.filter(a=>a.id!=='dashboard').map(area=><Link key={area.id} to={area.to} className="app-panel dashboard-area-link"><span className="area-icon"><area.icon className="h-5 w-5" aria-hidden/></span><ArrowUpRightIcon className="area-arrow h-4 w-4" aria-hidden/><h2>{area.label}</h2><p>{area.description}</p></Link>)}</section>
     <Card><CardHeader title="Workforce workflow" description="A clear path from registration to production."/><ol className="workflow-steps">{[{to:'/register',label:'Register staff',text:'Create an employee or freelancer record and login.'},{to:'/training',label:'Train and evaluate',text:'Start training, record completed days and evaluate readiness.'},{to:'/workforce/assignments',label:'Assign platform',text:'Choose a production platform and shift after qualification.'}].map((step,i)=><li key={step.to}><span className="workflow-step-number" aria-hidden>0{i+1}</span><Link to={step.to}>{step.label}</Link><p>{step.text}</p></li>)}</ol></Card>

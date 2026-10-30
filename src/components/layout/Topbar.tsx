@@ -88,7 +88,7 @@ export function Topbar() {
   const navigate = useNavigate();
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const notif = useQuery({ queryKey: ['notifications', user.id, 'unread'], queryFn: () => api.listNotifications({ unreadOnly: true }), refetchInterval: 60_000 });
+  const notif = useQuery({ queryKey: ['notifications', user.id, 'unread'], queryFn: () => api.listNotifications({ unreadOnly: true }), refetchInterval: 2_000 });
   useEffect(() => {
     const close = (e: MouseEvent) => !menuRef.current?.contains(e.target as Node) && setMenu(false);
     document.addEventListener('mousedown', close);

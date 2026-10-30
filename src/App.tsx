@@ -36,7 +36,6 @@ const Shifts = named(() => import('./pages/scheduling/Shifts'), 'Shifts');
 const Rotation = named(() => import('./pages/scheduling/Rotation'), 'Rotation');
 const Roster = named(() => import('./pages/scheduling/Roster'), 'Roster');
 const OffDays = named(() => import('./pages/scheduling/OffDays'), 'OffDays');
-const MyOffDays = named(() => import('./pages/scheduling/MyOffDays'), 'MyOffDays');
 const MySchedule = named(() => import('./pages/scheduling/MySchedule'), 'MySchedule');
 const MyAvailability = named(() => import('./pages/scheduling/MyAvailability'), 'MyAvailability');
 const ReplacementCenter = named(() => import('./pages/replacements/ReplacementCenter'), 'ReplacementCenter');
@@ -44,7 +43,6 @@ const ReplacementDetail = named(() => import('./pages/replacements/ReplacementDe
 const MyAssignments = named(() => import('./pages/replacements/MyAssignments'), 'MyAssignments');
 const Laptops = named(() => import('./pages/resources/Laptops'), 'Laptops');
 const LaptopDetail = named(() => import('./pages/resources/LaptopDetail'), 'LaptopDetail');
-const ReportIssue = named(() => import('./pages/resources/ReportIssue'), 'ReportIssue');
 const MyWorkstation = named(() => import('./pages/resources/MyWorkstation'), 'MyWorkstation');
 const MyPlatform = named(() => import('./pages/resources/MyPlatform'), 'MyPlatform');
 const Notifications = named(() => import('./pages/system/Notifications'), 'Notifications');
@@ -125,12 +123,12 @@ export function App() {
             <Route path="settings" element={g(SUP, <Settings />)} />
             <Route path="my/platform" element={g(STAFF, <MyPlatform />)} />
             <Route path="my/schedule" element={g(['EMPLOYEE'], <MySchedule />)} />
-            <Route path="my/off-days" element={g(['EMPLOYEE'], <MyOffDays />)} />
+            <Route path="my/off-days" element={g(['EMPLOYEE'], <Navigate to="/my/schedule" replace />)} />
             <Route path="my/availability" element={g(['FREELANCER'], <MyAvailability />)} />
             <Route path="my/assignments" element={g(['FREELANCER'], <MyAssignments />)} />
             <Route path="my/workstation" element={g(STAFF, <MyWorkstation />)} />
             <Route path="handover" element={g(STAFF, <Navigate to="/my/platform" replace />)} />
-            <Route path="report-issue" element={g(STAFF, <ReportIssue />)} />
+            <Route path="report-issue" element={g(STAFF, <Navigate to="/my/workstation" replace />)} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />

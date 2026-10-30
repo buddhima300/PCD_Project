@@ -1,0 +1,77 @@
+/* Sculpted glass: a stable pointer target surrounds the dimensional plane.
+   Only decorative layers move; focused form controls always settle to rest. */
+.login-experience .login-exposure { animation: none; }
+.login-sculpture { position: relative; min-width: 0; width: 100%; perspective: 1400px; }
+.login-glass-plane { position: relative; transform-style: preserve-3d; transform-origin: 50% 50%; }
+.login-glass-backing {
+  position: absolute;
+  inset: 8px -10px -12px 10px;
+  border: 1px solid #9ab9ff4d;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #8c9eff1c, #26226244 55%, #5e89f526);
+  box-shadow: 8px 16px 42px #03051588, inset 1px 1px #d5e5ff33, inset -1px -1px #8974ed22;
+  transform: translateZ(-18px) rotate(1.2deg);
+  pointer-events: none;
+}
+.login-ground-shadow {
+  position: absolute;
+  height: 48px;
+  left: 8%;
+  right: 2%;
+  bottom: -34px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #050717a6, #05071700 70%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+.agency-theme .login-sculpture .login-signin-card {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent;
+  border-radius: 26px;
+  background:
+    linear-gradient(145deg, #2b294be6, #1c1939db 55%, #14192de8) padding-box,
+    linear-gradient(135deg, #d8edff9c, #a695ff40 36%, #6474cc33 65%, #7ac8ff7a) border-box;
+  box-shadow:
+    0 32px 80px -24px #030511c9,
+    0 8px 20px -10px #3663c94d,
+    inset 0 1px 1px #ffffff33,
+    inset 1px 0 1px #d9e6ff12,
+    inset 0 -1px 2px #83b5ff1a;
+  backdrop-filter: blur(28px) saturate(135%);
+  -webkit-backdrop-filter: blur(28px) saturate(135%);
+}
+.login-signin-card > :not(.login-card-reflection) { position: relative; z-index: 1; }
+.login-card-reflection { position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; }
+.login-sculpture .login-field {
+  background: linear-gradient(155deg, #0b0c1abf, #19162c99);
+  border-color: #9e9dc633;
+  box-shadow: inset 0 3px 8px #03051166, inset 0 -1px #d0ddff0a, 0 1px #ffffff04;
+}
+.login-sculpture .login-field:focus-within {
+  background: #17152c;
+  border-color: #c6ff33;
+  box-shadow: inset 0 2px 5px #03051155, 0 0 0 3px #c6ff3312;
+}
+.login-sculpture .login-card-kicker { text-shadow: 0 0 18px #c6ff3326; }
+.login-sculpture .login-card-intro h1 { text-shadow: 0 2px 18px #c3d8ff0c; }
+.login-sculpture .login-submit:active:not(:disabled) { box-shadow: inset 0 2px 5px #0008; }
+
+@media (max-width: 1023px), (hover: none), (pointer: coarse) {
+  .login-glass-plane { transform: none !important; }
+  .login-glass-backing { inset: 6px -5px -8px 6px; transform: translateZ(-12px); border-radius: 24px; }
+  .login-light-trace { animation: none; }
+}
+@media (max-width: 479px) {
+  .agency-theme .login-sculpture .login-signin-card { border-radius: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-glass-plane { transform: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .agency-theme .login-sculpture .login-signin-card { background: #19172f; border-color: #8e84ab; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .login-card-reflection { display: none; }
+}
+@supports not (backdrop-filter: blur(28px)) {
+  .agency-theme .login-sculpture .login-signin-card { background: #19172f; border-color: #8e84ab; }
+}
